@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.duoduocode.service.recurring.mapper.RecurringTemplateMapper">
+
+    <resultMap id="BaseResultMap" type="com.duoduocode.service.recurring.entity.RecurringTemplate">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="name" property="name"/>
+        <result column="type" property="type"/>
+        <result column="amount" property="amount"/>
+        <result column="category_id" property="categoryId"/>
+        <result column="account_id" property="accountId"/>
+        <result column="to_account_id" property="toAccountId"/>
+        <result column="description" property="description"/>
+        <result column="frequency" property="frequency"/>
+        <result column="day_of_week" property="dayOfWeek"/>
+        <result column="day_of_month" property="dayOfMonth"/>
+        <result column="month_of_year" property="monthOfYear"/>
+        <result column="start_date" property="startDate"/>
+        <result column="end_date" property="endDate"/>
+        <result column="max_count" property="maxCount"/>
+        <result column="executed_count" property="executedCount"/>
+        <result column="next_trigger_date" property="nextTriggerDate"/>
+        <result column="last_triggered_at" property="lastTriggeredAt"/>
+        <result column="status" property="status"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, name, type, amount, category_id, account_id, to_account_id,
+        description, frequency, day_of_week, day_of_month, month_of_year,
+        start_date, end_date, max_count, executed_count, next_trigger_date,
+        last_triggered_at, status, created_at
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO recurring_template (
+            user_id, name, type, amount, category_id, account_id, to_account_id,
+            description, frequency, day_of_week, day_of_month, month_of_year,
+            start_date, end_date, max_count, executed_count, next_trigger_date,
+            last_triggered_at, status, created_at
+        ) VALUES (
+            #{userId}, #{name}, #{type}, #{amount}, #{categoryId}, #{accountId}, #{toAccountId},
+            #{description}, #{frequency}, #{dayOfWeek}, #{dayOfMonth}, #{monthOfYear},
+            #{startDate}, #{endDate}, #{maxCount}, #{executedCount}, #{nextTriggerDate},
+            #{lastTriggeredAt}, #{status}, #{createdAt}
+        )
+    </insert>
+
+    <update id="updateById">
+        UPDATE recurring_template
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="type != null">type = #{type},</if>
+            <if test="amount != null">amount = #{amount},</if>
+            <if test="categoryId != null">category_id = #{categoryId},</if>
+            <if test="accountId != null">account_id = #{accountId},</if>
+            <if test="toAccountId != null">to_account_id = #{toAccountId},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="frequency != null">frequency = #{frequency},</if>
+            <if test="dayOfWeek != null">day_of_week = #{dayOfWeek},</if>
+            <if test="dayOfMonth != null">day_of_month = #{dayOfMonth},</if>
+            <if test="monthOfYear != null">month_of_year = #{monthOfYear},</if>
+            <if test="startDate != null">start_date = #{startDate},</if>
+            <if test="endDate != null">end_date = #{endDate},</if>
+            <if test="maxCount != null">max_count = #{maxCount},</if>
+            <if test="executedCount != null">executed_count = #{executedCount},</if>
+            <if test="nextTriggerDate != null">next_trigger_date = #{nextTriggerDate},</if>
+            <if test="lastTriggeredAt != null">last_triggered_at = #{lastTriggeredAt},</if>
+            <if test="status != null">status = #{status}</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM recurring_template WHERE id = #{id}
+    </delete>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM recurring_template
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM recurring_template
+        WHERE user_id = #{userId}
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="selectDueTemplates" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM recurring_template
+        WHERE user_id = #{userId}
+        AND status = 'active'
+        AND next_trigger_date &lt;= #{date}
+        AND (end_date IS NULL OR end_date &gt;= #{date})
+        AND (max_count IS NULL OR executed_count &lt; max_count)
+        ORDER BY next_trigger_date ASC
+    </select>
+
+    <update id="updateStatus">
+        UPDATE recurring_template
+        SET status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateExecution">
+        UPDATE recurring_template
+        SET executed_count = #{executedCount},
+            next_trigger_date = #{nextTriggerDate},
+            last_triggered_at = #{lastTriggeredAt}
+        WHERE id = #{id}
+    </update>
+
+</mapper>

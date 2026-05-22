@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.duoduocode.service.category.mapper.CategoryMapper">
+
+    <resultMap id="BaseResultMap" type="com.duoduocode.service.category.entity.Category">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="name" property="name"/>
+        <result column="type" property="type"/>
+        <result column="parent_id" property="parentId"/>
+        <result column="icon" property="icon"/>
+        <result column="color" property="color"/>
+        <result column="monthly_budget" property="monthlyBudget"/>
+        <result column="weekly_budget" property="weeklyBudget"/>
+        <result column="alert_threshold" property="alertThreshold"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="is_deleted" property="isDeleted"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, name, type, parent_id, icon, color, monthly_budget, weekly_budget,
+        alert_threshold, sort_order, is_deleted, created_at
+    </sql>
+
+    <!-- 插入分类 -->
+    <insert id="insert" parameterType="com.duoduocode.service.category.entity.Category" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO category (
+            user_id, name, type, parent_id, icon, color, monthly_budget, weekly_budget,
+            alert_threshold, sort_order, is_deleted, created_at
+        ) VALUES (
+            #{userId}, #{name}, #{type}, #{parentId}, #{icon}, #{color}, #{monthlyBudget}, #{weeklyBudget},
+            #{alertThreshold}, #{sortOrder}, #{isDeleted}, #{createdAt}
+        )
+    </insert>
+
+    <!-- 更新分类 -->
+    <update id="updateById" parameterType="com.duoduocode.service.category.entity.Category">
+        UPDATE category
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="icon != null">icon = #{icon},</if>
+            <if test="color != null">color = #{color},</if>
+            <if test="monthlyBudget != null">monthly_budget = #{monthlyBudget},</if>
+            <if test="weeklyBudget != null">weekly_budget = #{weeklyBudget},</if>
+            <if test="alertThreshold != null">alert_threshold = #{alertThreshold},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="parentId != null">parent_id = #{parentId},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID查询分类 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM category
+        WHERE id = #{id} AND is_deleted = 0
+    </select>
+
+    <!-- 根据用户ID和类型查询分类列表 -->
+    <select id="selectByUserIdAndType" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM category
+        WHERE user_id = #{userId}
+        <if test="type != null and type != ''">
+            AND type = #{type}
+        </if>
+        AND is_deleted = 0
+        ORDER BY sort_order ASC, created_at ASC
+    </select>
+
+    <!-- 根据用户ID查询所有分类列表 -->
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM category
+        WHERE user_id = #{userId} AND is_deleted = 0
+        ORDER BY type ASC, sort_order ASC, created_at ASC
+    </select>
+
+    <!-- 根据父分类ID查询子分类列表 -->
+    <select id="selectByParentId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM category
+        WHERE parent_id = #{parentId} AND is_deleted = 0
+        ORDER BY sort_order ASC, created_at ASC
+    </select>
+
+    <!-- 检查分类名称是否存在 -->
+    <select id="countByUserIdAndName" resultType="int">
+        SELECT COUNT(1)
+        FROM category
+        WHERE user_id = #{userId} AND name = #{name} AND is_deleted = 0
+        <if test="type != null and type != ''">
+            AND type = #{type}
+        </if>
+        <if test="parentId != null">
+            AND parent_id = #{parentId}
+        </if>
+        <if test="parentId == null">
+            AND parent_id IS NULL
+        </if>
+        <if test="excludeId != null">
+            AND id != #{excludeId}
+        </if>
+    </select>
+
+    <!-- 软删除分类 -->
+    <update id="softDeleteById">
+        UPDATE category
+        SET is_deleted = 1
+        WHERE id = #{id}
+    </update>
+
+    <!-- 更新子分类的父分类（迁移到其他分类） -->
+    <update id="updateChildrenParentId">
+        UPDATE category
+        SET parent_id = #{newParentId}
+        WHERE parent_id = #{oldParentId} AND is_deleted = 0
+    </update>
+
+    <!-- 根据用户ID和关键词搜索分类（支持拼音） -->
+    <select id="searchByKeyword" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM category
+        WHERE user_id = #{userId} AND is_deleted = 0
+        AND (
+            name LIKE CONCAT('%', #{keyword}, '%')
+            OR pinyin LIKE CONCAT('%', #{keyword}, '%')
+            OR pinyin_first LIKE CONCAT('%', #{keyword}, '%')
+        )
+        ORDER BY sort_order ASC, created_at ASC
+    </select>
+
+    <!-- 获取最近使用的分类（基于交易记录） -->
+    <select id="selectRecentUsed" resultMap="BaseResultMap">
+        SELECT DISTINCT c.*
+        FROM category c
+        INNER JOIN entry e ON e.account_id = c.id AND e.account_type = 'category'
+        INNER JOIN `transaction` t ON t.id = e.transaction_id AND t.is_deleted = 0
+        WHERE c.user_id = #{userId}
+        <if test="type != null and type != ''">
+            AND c.type = #{type}
+        </if>
+        AND c.is_deleted = 0
+        ORDER BY t.created_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 获取快捷二级分类（最近使用的子分类） -->
+    <select id="selectQuickChildren" resultMap="BaseResultMap">
+        SELECT DISTINCT c.*
+        FROM category c
+        INNER JOIN entry e ON e.account_id = c.id AND e.account_type = 'category'
+        INNER JOIN `transaction` t ON t.id = e.transaction_id AND t.is_deleted = 0
+        WHERE c.parent_id = #{parentId} AND c.is_deleted = 0
+        ORDER BY t.created_at DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

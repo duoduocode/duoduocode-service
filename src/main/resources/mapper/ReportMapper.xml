@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.duoduocode.service.report.mapper.ReportMapper">
+
+    <!-- 月度收支统计 -->
+    <select id="selectMonthlyIncomeExpense" resultType="com.duoduocode.service.report.dto.MonthlyData">
+        SELECT
+            DATE_FORMAT(t.date, '%Y-%m') as month,
+            SUM(CASE WHEN e.debit > 0 AND a.type = 'asset' THEN e.debit ELSE 0 END) as income,
+            SUM(CASE WHEN e.credit > 0 AND a.type = 'asset' THEN e.credit ELSE 0 END) as expense
+        FROM transaction t
+        JOIN entry e ON e.transaction_id = t.id
+        JOIN account a ON a.id = e.account_id
+        WHERE t.user_id = #{userId}
+          AND t.is_deleted = 0
+          AND t.date BETWEEN #{startDate} AND #{endDate}
+        GROUP BY DATE_FORMAT(t.date, '%Y-%m')
+        ORDER BY month
+    </select>
+
+    <!-- 分类统计 -->
+    <select id="selectCategoryStats" resultType="com.duoduocode.service.report.dto.CategoryData">
+        SELECT
+            c.id as categoryId,
+            c.name as categoryName,
+            SUM(e.debit) as amount,
+            COUNT(*) as transactionCount
+        FROM transaction t
+        JOIN entry e ON e.transaction_id = t.id
+        JOIN category c ON c.id = e.account_id
+        WHERE t.user_id = #{userId}
+          AND t.is_deleted = 0
+          AND c.type = #{type}
+          AND t.date BETWEEN #{startDate} AND #{endDate}
+        GROUP BY c.id, c.name
+        ORDER BY amount DESC
+    </select>
+
+    <!-- 账户每日余额统计 -->
+    <select id="selectAccountDailyBalance" resultType="com.duoduocode.service.report.dto.DailyBalance">
+        SELECT
+            date as date,
+            SUM(CASE
+                WHEN e.account_id = #{accountId} AND e.debit > 0 THEN e.debit
+                WHEN e.account_id = #{accountId} AND e.credit > 0 THEN -e.credit
+                ELSE 0
+            END) as balance
+        FROM transaction t
+        JOIN entry e ON e.transaction_id = t.id
+        WHERE t.is_deleted = 0
+          AND t.date BETWEEN #{startDate} AND #{endDate}
+        GROUP BY t.date
+        ORDER BY t.date
+    </select>
+
+</mapper>

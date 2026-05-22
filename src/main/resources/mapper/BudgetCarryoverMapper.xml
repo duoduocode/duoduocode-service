@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.duoduocode.service.budget.mapper.BudgetCarryoverMapper">
+
+    <resultMap id="BaseResultMap" type="com.duoduocode.service.budget.entity.BudgetCarryover">
+        <id column="id" property="id"/>
+        <result column="category_id" property="categoryId"/>
+        <result column="from_month" property="fromMonth"/>
+        <result column="to_month" property="toMonth"/>
+        <result column="carryover_amount" property="carryoverAmount"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, category_id, from_month, to_month, carryover_amount, created_at
+    </sql>
+
+    <!-- 插入结转记录 -->
+    <insert id="insert" parameterType="com.duoduocode.service.budget.entity.BudgetCarryover" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO budget_carryover (
+            category_id, from_month, to_month, carryover_amount, created_at
+        ) VALUES (
+            #{categoryId}, #{fromMonth}, #{toMonth}, #{carryoverAmount}, #{createdAt}
+        )
+    </insert>
+
+    <!-- 根据分类ID和目标月份查询结转记录 -->
+    <select id="selectByCategoryIdAndToMonth" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM budget_carryover
+        WHERE category_id = #{categoryId} AND to_month = #{toMonth}
+    </select>
+
+    <!-- 根据分类ID和来源月份查询结转记录 -->
+    <select id="selectByCategoryIdAndFromMonth" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM budget_carryover
+        WHERE category_id = #{categoryId} AND from_month = #{fromMonth}
+    </select>
+
+    <!-- 根据目标月份查询结转记录列表 -->
+    <select id="selectByToMonth" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM budget_carryover
+        WHERE to_month = #{toMonth}
+        ORDER BY created_at DESC
+    </select>
+
+    <!-- 计算某分类某月份的总结转金额 -->
+    <select id="sumCarryoverAmountByCategoryIdAndToMonth" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(carryover_amount), 0)
+        FROM budget_carryover
+        WHERE category_id = #{categoryId} AND to_month = #{toMonth}
+    </select>
+
+    <!-- 根据ID删除结转记录 -->
+    <delete id="deleteById">
+        DELETE FROM budget_carryover
+        WHERE id = #{id}
+    </delete>
+
+</mapper>

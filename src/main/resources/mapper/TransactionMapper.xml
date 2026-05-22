@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.duoduocode.service.transaction.mapper.TransactionMapper">
+
+    <resultMap id="BaseResultMap" type="com.duoduocode.service.transaction.entity.Transaction">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="date" property="date"/>
+        <result column="time" property="time"/>
+        <result column="amount" property="amount"/>
+        <result column="description" property="description"/>
+        <result column="mode" property="mode"/>
+        <result column="refund_status" property="refundStatus"/>
+        <result column="refunded_amount" property="refundedAmount"/>
+        <result column="is_deleted" property="isDeleted"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, date, time, amount, description, mode, refund_status,
+        refunded_amount, is_deleted, created_at
+    </sql>
+
+    <!-- 插入交易 -->
+    <insert id="insert" parameterType="com.duoduocode.service.transaction.entity.Transaction" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `transaction` (
+            user_id, date, time, amount, description, mode, refund_status,
+            refunded_amount, is_deleted, created_at
+        ) VALUES (
+            #{userId}, #{date}, #{time}, #{amount}, #{description}, #{mode}, #{refundStatus},
+            #{refundedAmount}, #{isDeleted}, #{createdAt}
+        )
+    </insert>
+
+    <!-- 更新交易 -->
+    <update id="updateById" parameterType="com.duoduocode.service.transaction.entity.Transaction">
+        UPDATE `transaction`
+        <set>
+            <if test="date != null">date = #{date},</if>
+            <if test="time != null">time = #{time},</if>
+            <if test="amount != null">amount = #{amount},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="mode != null">mode = #{mode},</if>
+            <if test="refundStatus != null">refund_status = #{refundStatus},</if>
+            <if test="refundedAmount != null">refunded_amount = #{refundedAmount},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID查询交易 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM `transaction`
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据用户ID查询交易列表（分页） -->
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM `transaction`
+        WHERE user_id = #{userId} AND is_deleted = 0
+        <if test="startDate != null and startDate != ''">
+            AND date >= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND date &lt;= #{endDate}
+        </if>
+        ORDER BY date DESC, time DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 根据用户ID统计交易总数 -->
+    <select id="countByUserId" resultType="long">
+        SELECT COUNT(1)
+        FROM `transaction`
+        WHERE user_id = #{userId} AND is_deleted = 0
+        <if test="startDate != null and startDate != ''">
+            AND date >= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND date &lt;= #{endDate}
+        </if>
+    </select>
+
+    <!-- 获取最近交易列表 -->
+    <select id="selectRecentByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM `transaction`
+        WHERE user_id = #{userId} AND is_deleted = 0
+        ORDER BY date DESC, time DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 软删除交易 -->
+    <update id="softDeleteById">
+        UPDATE `transaction`
+        SET is_deleted = 1
+        WHERE id = #{id}
+    </update>
+
+    <!-- 检查重复交易 -->
+    <select id="checkDuplicate" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM `transaction`
+        WHERE user_id = #{userId}
+          AND amount = #{amount}
+          AND date = #{date}
+          AND is_deleted = 0
+        <if test="description != null and description != ''">
+            AND description = #{description}
+        </if>
+        LIMIT 1
+    </select>
+
+    <!-- 搜索交易 -->
+    <select id="search" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM `transaction`
+        WHERE user_id = #{userId} AND is_deleted = 0
+        <if test="keyword != null and keyword != ''">
+            AND description LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        <if test="accountId != null">
+            AND id IN (
+                SELECT DISTINCT transaction_id FROM entry
+                WHERE account_id = #{accountId}
+            )
+        </if>
+        <if test="minAmount != null and minAmount != ''">
+            AND amount >= #{minAmount}
+        </if>
+        <if test="maxAmount != null and maxAmount != ''">
+            AND amount &lt;= #{maxAmount}
+        </if>
+        <if test="startDate != null and startDate != ''">
+            AND date >= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND date &lt;= #{endDate}
+        </if>
+        ORDER BY date DESC, time DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 搜索交易总数 -->
+    <select id="countSearch" resultType="long">
+        SELECT COUNT(1)
+        FROM `transaction`
+        WHERE user_id = #{userId} AND is_deleted = 0
+        <if test="keyword != null and keyword != ''">
+            AND description LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        <if test="accountId != null">
+            AND id IN (
+                SELECT DISTINCT transaction_id FROM entry
+                WHERE account_id = #{accountId}
+            )
+        </if>
+        <if test="minAmount != null and minAmount != ''">
+            AND amount >= #{minAmount}
+        </if>
+        <if test="maxAmount != null and maxAmount != ''">
+            AND amount &lt;= #{maxAmount}
+        </if>
+        <if test="startDate != null and startDate != ''">
+            AND date >= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND date &lt;= #{endDate}
+        </if>
+    </select>
+
+    <!-- 更新退款状态 -->
+    <update id="updateRefundStatus">
+        UPDATE `transaction`
+        SET refund_status = #{refundStatus},
+            refunded_amount = #{refundedAmount}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 高级搜索交易（支持多条件组合筛选） -->
+    <select id="searchTransactions" resultMap="BaseResultMap">
+        SELECT DISTINCT t.<include refid="Base_Column_List"/>
+        FROM `transaction` t
+        LEFT JOIN entry e ON t.id = e.transaction_id
+        WHERE t.user_id = #{userId} AND t.is_deleted = 0
+        <include refid="SearchWhereClause"/>
+        ORDER BY
+        <choose>
+            <when test="query.sortBy == 'amount'">
+                t.amount
+            </when>
+            <when test="query.sortBy == 'created_at'">
+                t.created_at
+            </when>
+            <otherwise>
+                t.date
+            </otherwise>
+        </choose>
+        <choose>
+            <when test="query.sortOrder == 'asc'">
+                ASC
+            </when>
+            <otherwise>
+                DESC
+            </otherwise>
+        </choose>
+        , t.time DESC
+        LIMIT #{query.pageSize} OFFSET #{query.offset}
+    </select>
+
+    <!-- 高级搜索交易总数 -->
+    <select id="countSearchTransactions" resultType="long">
+        SELECT COUNT(DISTINCT t.id)
+        FROM `transaction` t
+        LEFT JOIN entry e ON t.id = e.transaction_id
+        WHERE t.user_id = #{userId} AND t.is_deleted = 0
+        <include refid="SearchWhereClause"/>
+    </select>
+
+    <!-- 搜索条件 SQL 片段 -->
+    <sql id="SearchWhereClause">
+        <!-- 关键词模糊搜索（描述） -->
+        <if test="query.keyword != null and query.keyword != ''">
+            AND t.description LIKE CONCAT('%', #{query.keyword}, '%')
+        </if>
+        <!-- 最小金额 -->
+        <if test="query.minAmount != null">
+            AND t.amount >= #{query.minAmount}
+        </if>
+        <!-- 最大金额 -->
+        <if test="query.maxAmount != null">
+            AND t.amount &lt;= #{query.maxAmount}
+        </if>
+        <!-- 分类ID筛选 -->
+        <if test="query.categoryId != null">
+            AND EXISTS (
+                SELECT 1 FROM entry e2
+                WHERE e2.transaction_id = t.id
+                AND e2.account_id = #{query.categoryId}
+                AND e2.account_type = 'category'
+            )
+        </if>
+        <!-- 账户ID筛选 -->
+        <if test="query.accountId != null">
+            AND EXISTS (
+                SELECT 1 FROM entry e3
+                WHERE e3.transaction_id = t.id
+                AND e3.account_id = #{query.accountId}
+                AND e3.account_type = 'account'
+            )
+        </if>
+        <!-- 开始日期 -->
+        <if test="query.startDate != null and query.startDate != ''">
+            AND t.date >= #{query.startDate}
+        </if>
+        <!-- 结束日期 -->
+        <if test="query.endDate != null and query.endDate != ''">
+            AND t.date &lt;= #{query.endDate}
+        </if>
+        <!-- 交易类型筛选 -->
+        <if test="query.type != null and query.type != ''">
+            AND EXISTS (
+                SELECT 1 FROM entry e4
+                WHERE e4.transaction_id = t.id
+                AND e4.account_type = 'category'
+                <choose>
+                    <when test="query.type == 'expense'">
+                        AND e4.debit IS NOT NULL AND e4.debit &gt; 0
+                    </when>
+                    <when test="query.type == 'income'">
+                        AND e4.credit IS NOT NULL AND e4.credit &gt; 0
+                    </when>
+                </choose>
+            )
+        </if>
+    </sql>
+
+    <!-- 根据分类ID统计交易数量 -->
+    <select id="countByCategoryId" resultType="long">
+        SELECT COUNT(DISTINCT t.id)
+        FROM `transaction` t
+        INNER JOIN entry e ON t.id = e.transaction_id
+        WHERE e.account_id = #{categoryId}
+        AND e.account_type = 'category'
+        AND t.is_deleted = 0
+    </select>
+
+    <!-- 批量更新交易的分类ID（分类迁移） -->
+    <update id="updateCategoryId">
+        UPDATE entry
+        SET account_id = #{newCategoryId}
+        WHERE account_id = #{oldCategoryId}
+        AND account_type = 'category'
+    </update>
+
+</mapper>

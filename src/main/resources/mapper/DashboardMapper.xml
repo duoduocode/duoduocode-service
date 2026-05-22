@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.duoduocode.service.dashboard.mapper.DashboardMapper">
+
+    <!-- 获取上月净资产 -->
+    <select id="getLastMonthNetWorth" resultType="java.math.BigDecimal">
+        SELECT
+            COALESCE(SUM(
+                CASE
+                    WHEN a.type = 'asset' THEN COALESCE(a.initial_balance, 0)
+                    WHEN a.type = 'liability' THEN COALESCE(a.initial_balance, 0)
+                    WHEN a.type = 'investment' THEN COALESCE(a.initial_balance, 0)
+                    ELSE 0
+                END
+            ), 0) +
+            COALESCE((
+                SELECT SUM(
+                    CASE
+                        WHEN a2.type = 'asset' THEN COALESCE(SUM(e.debit) - SUM(e.credit), 0)
+                        WHEN a2.type = 'liability' THEN COALESCE(SUM(e.debit) - SUM(e.credit), 0)
+                        WHEN a2.type = 'investment' THEN COALESCE(SUM(e.debit) - SUM(e.credit), 0)
+                        ELSE 0
+                    END
+                )
+                FROM accounts a2
+                LEFT JOIN entries e ON e.account_id = a2.id AND e.account_type = 'account'
+                LEFT JOIN transactions t ON t.id = e.transaction_id AND t.is_deleted = 0 AND t.date &lt; #{startDate}
+                WHERE a2.user_id = #{userId} AND a2.is_deleted = 0 AND a2.include_in_net_worth = 1
+            ), 0) AS last_month_net_worth
+        FROM accounts a
+        WHERE a.user_id = #{userId} AND a.is_deleted = 0 AND a.include_in_net_worth = 1
+    </select>
+
+    <!-- 获取月度收支汇总 -->
+    <select id="getMonthlySummary" resultType="java.util.Map">
+        SELECT
+            COALESCE(SUM(
+                CASE WHEN c.type = 'income' THEN e.credit ELSE 0 END
+            ), 0) AS totalIncome,
+            COALESCE(SUM(
+                CASE WHEN c.type = 'expense' THEN e.debit ELSE 0 END
+            ), 0) AS totalExpense,
+            COUNT(DISTINCT CASE WHEN c.type = 'income' THEN t.id END) AS incomeCount,
+            COUNT(DISTINCT CASE WHEN c.type = 'expense' THEN t.id END) AS expenseCount
+        FROM transactions t
+        INNER JOIN entries e ON e.transaction_id = t.id AND e.account_type = 'category'
+        INNER JOIN categories c ON c.id = e.account_id
+        WHERE t.user_id = #{userId}
+          AND t.is_deleted = 0
+          AND t.date >= #{startDate}
+          AND t.date &lt;= #{endDate}
+    </select>
+
+    <!-- 获取分类月度支出 -->
+    <select id="getCategoryExpense" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(e.debit), 0) AS total_expense
+        FROM transactions t
+        INNER JOIN entries e ON e.transaction_id = t.id AND e.account_type = 'category' AND e.account_id = #{categoryId}
+        WHERE t.user_id = #{userId}
+          AND t.is_deleted = 0
+          AND t.date >= #{startDate}
+          AND t.date &lt;= #{endDate}
+    </select>
+
+    <!-- 获取分类支出列表（按金额排序） -->
+    <select id="getTopExpenseCategories" resultType="java.util.Map">
+        SELECT
+            c.id AS categoryId,
+            c.name AS categoryName,
+            c.icon AS categoryIcon,
+            COALESCE(SUM(e.debit), 0) AS totalExpense,
+            COUNT(t.id) AS txCount
+        FROM transactions t
+        INNER JOIN entries e ON e.transaction_id = t.id AND e.account_type = 'category'
+        INNER JOIN categories c ON c.id = e.account_id
+        WHERE t.user_id = #{userId}
+          AND t.is_deleted = 0
+          AND c.is_deleted = 0
+          AND c.type = 'expense'
+          AND t.date >= #{startDate}
+          AND t.date &lt;= #{endDate}
+        GROUP BY c.id, c.name, c.icon
+        ORDER BY totalExpense DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 获取指定日期范围内的支出 -->
+    <select id="getExpenseByDateRange" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(e.debit), 0) AS total_expense
+        FROM transactions t
+        INNER JOIN entries e ON e.transaction_id = t.id AND e.account_type = 'category'
+        INNER JOIN categories c ON c.id = e.account_id
+        WHERE t.user_id = #{userId}
+          AND t.is_deleted = 0
+          AND c.type = 'expense'
+          AND t.date >= #{startDate}
+          AND t.date &lt;= #{endDate}
+    </select>
+
+    <!-- 获取交易分类信息 -->
+    <select id="getTransactionCategory" resultType="java.util.Map">
+        SELECT
+            c.name AS name,
+            c.icon AS icon,
+            c.type AS type
+        FROM entries e
+        INNER JOIN categories c ON c.id = e.account_id
+        WHERE e.transaction_id = #{transactionId}
+          AND e.account_type = 'category'
+        LIMIT 1
+    </select>
+
+</mapper>

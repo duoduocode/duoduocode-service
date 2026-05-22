@@ -1,0 +1,45 @@
+spring:
+  application:
+    name: duoduocode-service
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://rm-bp1m5pf44nzonuabqfo.mysql.rds.aliyuncs.com:3306/duoduocode_dev?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&connectTimeout=30000&socketTimeout=30000
+    username: duoduocode_code
+    password: Txd31186!
+    hikari:
+      initialization-fail-timeout: -1
+      connection-timeout: 60000
+      validation-timeout: 10000
+
+# MyBatis Plus 配置
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.duoduocode.service.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: isDeleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# JWT 配置
+jwt:
+  secret: ${JWT_SECRET:duoduocode-jwt-secret-key-must-be-at-least-256-bits-long}
+  expiration: ${JWT_EXPIRATION:86400000}  # 24小时，单位毫秒
+  header: Authorization
+  prefix: "Bearer "
+
+# 微信小程序配置
+wechat:
+  mini:
+    appid: ${WX_APPID:your-appid-here}
+    secret: ${WX_SECRET:your-secret-here}
+
+# 日志配置
+logging:
+  level:
+    com.duoduocode.service: debug
+    org.springframework: info

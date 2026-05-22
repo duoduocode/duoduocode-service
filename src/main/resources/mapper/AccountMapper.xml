@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.duoduocode.service.account.mapper.AccountMapper">
+
+    <resultMap id="BaseResultMap" type="com.duoduocode.service.account.entity.Account">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="name" property="name"/>
+        <result column="type" property="type"/>
+        <result column="icon" property="icon"/>
+        <result column="color" property="color"/>
+        <result column="initial_balance" property="initialBalance"/>
+        <result column="credit_limit" property="creditLimit"/>
+        <result column="include_in_net_worth" property="includeInNetWorth"/>
+        <result column="allow_transfer" property="allowTransfer"/>
+        <result column="enable_alert" property="enableAlert"/>
+        <result column="alert_threshold" property="alertThreshold"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="is_deleted" property="isDeleted"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, name, type, icon, color, initial_balance, credit_limit,
+        include_in_net_worth, allow_transfer, enable_alert, alert_threshold,
+        sort_order, is_deleted, created_at, updated_at
+    </sql>
+
+    <!-- 插入账户 -->
+    <insert id="insert" parameterType="com.duoduocode.service.account.entity.Account" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO account (
+            user_id, name, type, icon, color, initial_balance, credit_limit,
+            include_in_net_worth, allow_transfer, enable_alert, alert_threshold,
+            sort_order, is_deleted, created_at, updated_at
+        ) VALUES (
+            #{userId}, #{name}, #{type}, #{icon}, #{color}, #{initialBalance}, #{creditLimit},
+            #{includeInNetWorth}, #{allowTransfer}, #{enableAlert}, #{alertThreshold},
+            #{sortOrder}, #{isDeleted}, #{createdAt}, #{updatedAt}
+        )
+    </insert>
+
+    <!-- 更新账户 -->
+    <update id="updateById" parameterType="com.duoduocode.service.account.entity.Account">
+        UPDATE account
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="type != null">type = #{type},</if>
+            <if test="icon != null">icon = #{icon},</if>
+            <if test="color != null">color = #{color},</if>
+            <if test="initialBalance != null">initial_balance = #{initialBalance},</if>
+            <if test="creditLimit != null">credit_limit = #{creditLimit},</if>
+            <if test="includeInNetWorth != null">include_in_net_worth = #{includeInNetWorth},</if>
+            <if test="allowTransfer != null">allow_transfer = #{allowTransfer},</if>
+            <if test="enableAlert != null">enable_alert = #{enableAlert},</if>
+            <if test="alertThreshold != null">alert_threshold = #{alertThreshold},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="updatedAt != null">updated_at = #{updatedAt},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID查询账户 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM account
+        WHERE id = #{id} AND is_deleted = 0
+    </select>
+
+    <!-- 根据用户ID查询账户列表 -->
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM account
+        WHERE user_id = #{userId} AND is_deleted = 0
+        ORDER BY sort_order ASC, created_at ASC
+    </select>
+
+    <!-- 根据用户ID和类型查询账户列表 -->
+    <select id="selectByUserIdAndType" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM account
+        WHERE user_id = #{userId} AND type = #{type} AND is_deleted = 0
+        ORDER BY sort_order ASC, created_at ASC
+    </select>
+
+    <!-- 检查账户名称是否存在 -->
+    <select id="countByUserIdAndName" resultType="int">
+        SELECT COUNT(1)
+        FROM account
+        WHERE user_id = #{userId} AND name = #{name} AND is_deleted = 0
+        <if test="excludeId != null">
+            AND id != #{excludeId}
+        </if>
+    </select>
+
+    <!-- 计算账户当前余额 -->
+    <select id="calculateCurrentBalance" resultType="java.math.BigDecimal">
+        SELECT COALESCE(a.initial_balance, 0) + COALESCE(SUM(e.debit), 0) - COALESCE(SUM(e.credit), 0)
+        FROM account a
+        LEFT JOIN entry e ON e.account_id = a.id AND e.account_type = 'account'
+        LEFT JOIN `transaction` t ON t.id = e.transaction_id AND t.is_deleted = 0
+        WHERE a.id = #{accountId} AND a.is_deleted = 0
+        GROUP BY a.id, a.initial_balance
+    </select>
+
+    <!-- 软删除账户 -->
+    <update id="softDeleteById">
+        UPDATE account
+        SET is_deleted = 1, updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+</mapper>
