@@ -8,7 +8,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://rm-bp1m5pf44nzonuabqfo.mysql.rds.aliyuncs.com:3306/duoduocode_dev?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&connectTimeout=30000&socketTimeout=30000
     username: duoduocode_code
-    password: Txd31186!
+    password: Txd31180!
     hikari:
       initialization-fail-timeout: -1
       connection-timeout: 60000

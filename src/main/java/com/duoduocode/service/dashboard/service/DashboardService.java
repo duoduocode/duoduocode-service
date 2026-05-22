@@ -5,8 +5,8 @@ import com.duoduocode.service.dashboard.dto.DashboardVO;
 import com.duoduocode.service.dashboard.mapper.DashboardMapper;
 import com.duoduocode.service.account.entity.Account;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -33,6 +33,7 @@ public class DashboardService {
      * @param userId 用户ID
      * @return 看板数据
      */
+    @Transactional(readOnly = true)
     public DashboardVO getDashboard(Long userId) {
         DashboardVO vo = new DashboardVO();
 
@@ -169,6 +170,7 @@ public class DashboardService {
      * @param endDate   结束日期
      * @return 净资产数据
      */
+    @Transactional(readOnly = true)
     public Map<String, Object> getNetWorthTrend(Long userId, String startDate, String endDate) {
         // 获取起始净资产
         BigDecimal startNetWorth = dashboardMapper.getLastMonthNetWorth(userId, startDate);
@@ -206,6 +208,7 @@ public class DashboardService {
      * @param month  月份 (YYYY-MM)
      * @return 月度收支数据
      */
+    @Transactional(readOnly = true)
     public DashboardVO getMonthlyDetail(Long userId, String month) {
         YearMonth yearMonth = YearMonth.parse(month, DateTimeFormatter.ofPattern("yyyy-MM"));
         String monthStart = yearMonth.atDay(1).format(DateTimeFormatter.ISO_LOCAL_DATE);
