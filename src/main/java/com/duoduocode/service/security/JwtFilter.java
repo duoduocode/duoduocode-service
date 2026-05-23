@@ -4,6 +4,7 @@ import com.duoduocode.service.common.BusinessException;
 import com.duoduocode.service.common.ResultCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.util.PathMatcher;
@@ -23,6 +24,7 @@ import java.util.Map;
  * JWT 认证过滤器
  * 拦截请求，验证 Token，将用户ID存入 SecurityContext
  */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtFilter extends OncePerRequestFilter {
@@ -66,18 +68,18 @@ public class JwtFilter extends OncePerRequestFilter {
         String authHeader = request.getHeader("Authorization");
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            log.warn("认证失败: Token缺失, path={}", request.getRequestURI());
             sendUnauthorized(response, "Token缺失，请先登录");
             return;
         }
 
         String token = authHeader.substring(7);
 
-        // 验证 Token
         if (!jwtUtils.validateToken(token)) {
             if (jwtUtils.isTokenExpired(token)) {
-                sendUnauthorized(response, "Token已过期，请重新登录");
+                log.warn("认证失败: Token已过期");
             } else {
-                sendUnauthorized(response, "Token无效");
+                log.warn("认证失败: Token无效");
             }
             return;
         }

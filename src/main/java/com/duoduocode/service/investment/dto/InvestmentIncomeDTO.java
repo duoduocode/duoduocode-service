@@ -12,22 +12,27 @@ public class InvestmentIncomeDTO {
     /**
      * 收益日期
      */
-    private LocalDate incomeDate;
+    private LocalDate date;
 
     /**
      * 收益金额
      */
-    private BigDecimal incomeAmount;
+    private BigDecimal amount;
 
     /**
-     * 收益类型：interest-利息 dividend-分红 capital_gain-资本利得 other-其他
+     * 收益类型：daily-每日收益 dividend-分红 maturity-到期收益
      */
-    private String incomeType;
+    private String type;
 
     /**
-     * 收益描述
+     * 备注
      */
-    private String description;
+    private String note;
+
+    /**
+     * 是否再投资：0-否 1-是
+     */
+    private Integer isReinvested;
 
     /**
      * 关联交易ID（可选）
@@ -36,36 +41,44 @@ public class InvestmentIncomeDTO {
 
     // Getters and Setters
 
-    public LocalDate getIncomeDate() {
-        return incomeDate;
+    public LocalDate getDate() {
+        return date;
     }
 
-    public void setIncomeDate(LocalDate incomeDate) {
-        this.incomeDate = incomeDate;
+    public void setDate(LocalDate date) {
+        this.date = date;
     }
 
-    public BigDecimal getIncomeAmount() {
-        return incomeAmount;
+    public BigDecimal getAmount() {
+        return amount;
     }
 
-    public void setIncomeAmount(BigDecimal incomeAmount) {
-        this.incomeAmount = incomeAmount;
+    public void setAmount(BigDecimal amount) {
+        this.amount = amount;
     }
 
-    public String getIncomeType() {
-        return incomeType;
+    public String getType() {
+        return type;
     }
 
-    public void setIncomeType(String incomeType) {
-        this.incomeType = incomeType;
+    public void setType(String type) {
+        this.type = type;
     }
 
-    public String getDescription() {
-        return description;
+    public String getNote() {
+        return note;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
+    public void setNote(String note) {
+        this.note = note;
+    }
+
+    public Integer getIsReinvested() {
+        return isReinvested;
+    }
+
+    public void setIsReinvested(Integer isReinvested) {
+        this.isReinvested = isReinvested;
     }
 
     public Long getTransactionId() {

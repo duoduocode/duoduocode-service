@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 
 -- 账户表
-CREATE TABLE IF NOT EXISTS `accounts` (
+CREATE TABLE IF NOT EXISTS `account` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '账户ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
     `name` VARCHAR(50) NOT NULL COMMENT '账户名称',
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS `accounts` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='账户表';
 
 -- 交易表
-CREATE TABLE IF NOT EXISTS `transactions` (
+CREATE TABLE IF NOT EXISTS `transaction` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '交易ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
     `date` DATE NOT NULL COMMENT '交易日期',
@@ -63,7 +63,8 @@ CREATE TABLE IF NOT EXISTS `transactions` (
     `mode` VARCHAR(20) DEFAULT 'simple' COMMENT '记账模式：simple-简化模式, full-完整模式',
     `transaction_type` VARCHAR(20) DEFAULT 'expense' COMMENT '交易类型：expense-支出, income-收入, transfer-转账, repayment-还款',
     `refund_status` VARCHAR(20) DEFAULT 'none' COMMENT '退款状态：none-无退款, partial-部分退款, full-全额退款',
-    `refunded_amount` DECIMAL(15, 2) DEFAULT 0.00 COMMENT '已退款金额',
+    `refunded_amount` DECIMAL(16, 2) DEFAULT 0.00 COMMENT '已退款金额',
+    `net_amount` DECIMAL(16, 2) DEFAULT 0.00 COMMENT '净金额',
     `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '软删除标记',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -77,7 +78,7 @@ CREATE TABLE IF NOT EXISTS `transactions` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='交易表';
 
 -- 分录表（复式记账核心）
-CREATE TABLE IF NOT EXISTS `entries` (
+CREATE TABLE IF NOT EXISTS `entry` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '分录ID',
     `transaction_id` BIGINT NOT NULL COMMENT '关联交易ID',
     `account_id` BIGINT NOT NULL COMMENT '账户ID或分类ID',
@@ -86,15 +87,14 @@ CREATE TABLE IF NOT EXISTS `entries` (
     `account_type` VARCHAR(20) DEFAULT 'account' COMMENT '账户类型：category-分类, account-账户',
     `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '软删除标记',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
     KEY `idx_transaction_id` (`transaction_id`),
-    KEY `idx_account_id` (`account_id`),
-    KEY `idx_account_type` (`account_type`),
     CONSTRAINT `fk_entry_transaction` FOREIGN KEY (`transaction_id`) REFERENCES `transactions` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='分录表';
 
 -- 分类表
-CREATE TABLE IF NOT EXISTS `categories` (
+CREATE TABLE IF NOT EXISTS `category` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '分类ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
     `name` VARCHAR(50) NOT NULL COMMENT '分类名称',
@@ -132,11 +132,10 @@ CREATE TABLE IF NOT EXISTS `budget_daily` (
     UNIQUE KEY `uk_user_category_month` (`user_id`, `category_id`, `month`),
     KEY `idx_month` (`month`),
     CONSTRAINT `fk_budget_daily_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_budget_daily_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE CASCADE
+    CONSTRAINT `fk_budget_daily_category` FOREIGN KEY (`category_id`) REFERENCES `category` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='日常预算表';
-
 -- 专项预算表
-CREATE TABLE IF NOT EXISTS `special_budgets` (
+CREATE TABLE IF NOT EXISTS `special_budget` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '预算ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
     `name` VARCHAR(100) NOT NULL COMMENT '预算名称',
@@ -159,7 +158,7 @@ CREATE TABLE IF NOT EXISTS `special_budgets` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='专项预算表';
 
 -- 专项预算关联分类表
-CREATE TABLE IF NOT EXISTS `special_budget_categories` (
+CREATE TABLE IF NOT EXISTS `special_budget_category` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT 'ID',
     `special_budget_id` BIGINT NOT NULL COMMENT '专项预算ID',
     `category_id` BIGINT NOT NULL COMMENT '分类ID',
@@ -168,12 +167,12 @@ CREATE TABLE IF NOT EXISTS `special_budget_categories` (
     PRIMARY KEY (`id`),
     KEY `idx_special_budget_id` (`special_budget_id`),
     KEY `idx_category_id` (`category_id`),
-    CONSTRAINT `fk_sbc_budget` FOREIGN KEY (`special_budget_id`) REFERENCES `special_budgets` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_sbc_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE CASCADE
+    CONSTRAINT `fk_sbc_budget` FOREIGN KEY (`special_budget_id`) REFERENCES `special_budget` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_sbc_category` FOREIGN KEY (`category_id`) REFERENCES `category` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='专项预算关联分类表';
 
 -- 预算结转记录表
-CREATE TABLE IF NOT EXISTS `budget_carryovers` (
+CREATE TABLE IF NOT EXISTS `budget_carryover` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '结转ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
     `category_id` BIGINT NOT NULL COMMENT '分类ID',
@@ -188,11 +187,11 @@ CREATE TABLE IF NOT EXISTS `budget_carryovers` (
     KEY `idx_to_month` (`to_month`),
     KEY `idx_category_to_month` (`category_id`, `to_month`),
     CONSTRAINT `fk_budget_carryover_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_budget_carryover_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE CASCADE
+    CONSTRAINT `fk_budget_carryover_category` FOREIGN KEY (`category_id`) REFERENCES `category` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='预算结转记录表';
 
 -- 标签表
-CREATE TABLE IF NOT EXISTS `tags` (
+CREATE TABLE IF NOT EXISTS `tag` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '标签ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
     `name` VARCHAR(50) NOT NULL COMMENT '标签名称',
@@ -206,36 +205,40 @@ CREATE TABLE IF NOT EXISTS `tags` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='标签表';
 
 -- 投资账户收益记录表
-CREATE TABLE IF NOT EXISTS `investment_incomes` (
+CREATE TABLE IF NOT EXISTS `investment_income` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT 'ID',
-    `user_id` BIGINT NOT NULL COMMENT '用户ID',
     `account_id` BIGINT NOT NULL COMMENT '账户ID',
     `amount` DECIMAL(15, 2) NOT NULL COMMENT '收益金额',
     `date` DATE NOT NULL COMMENT '收益日期',
     `note` VARCHAR(255) DEFAULT NULL COMMENT '备注',
-    `reinvested` TINYINT(1) DEFAULT 0 COMMENT '是否再投资',
+    `type` ENUM('daily','dividend','maturity') NOT NULL DEFAULT 'daily' COMMENT '收益类型',
+    `is_reinvested` TINYINT(1) DEFAULT 0 COMMENT '是否再投资',
+    `transaction_id` BIGINT DEFAULT NULL COMMENT '关联自动生成的交易ID',
     `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '软删除标记',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
     KEY `idx_user_id` (`user_id`),
     KEY `idx_account_id` (`account_id`),
     KEY `idx_date` (`date`),
     KEY `idx_user_account_date` (`user_id`, `account_id`, `date`),
     CONSTRAINT `fk_investment_income_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_investment_income_account` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE
+    CONSTRAINT `fk_investment_income_account` FOREIGN KEY (`account_id`) REFERENCES `account` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='投资账户收益记录表';
 
 -- 投资账户市值记录表
-CREATE TABLE IF NOT EXISTS `investment_values` (
+CREATE TABLE IF NOT EXISTS `investment_value` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT 'ID',
-    `user_id` BIGINT NOT NULL COMMENT '用户ID',
     `account_id` BIGINT NOT NULL COMMENT '账户ID',
     `market_value` DECIMAL(15, 2) NOT NULL COMMENT '市值',
     `cost_basis` DECIMAL(15, 2) DEFAULT 0.00 COMMENT '成本',
+    `gain_rate` DECIMAL(15, 2) DEFAULT 0.00 COMMENT '收益率',
+    `unrealized_gain` DECIMAL(15, 2) DEFAULT 0.00 COMMENT '未实现收益',
     `date` DATE NOT NULL COMMENT '记录日期',
     `note` VARCHAR(255) DEFAULT NULL COMMENT '备注',
     `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '软删除标记',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
     KEY `idx_user_id` (`user_id`),
     KEY `idx_account_id` (`account_id`),
@@ -246,7 +249,7 @@ CREATE TABLE IF NOT EXISTS `investment_values` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='投资账户市值记录表';
 
 -- 周期交易模板表
-CREATE TABLE IF NOT EXISTS `recurring_templates` (
+CREATE TABLE IF NOT EXISTS `recurring_template` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '模板ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
     `name` VARCHAR(100) NOT NULL COMMENT '模板名称',
@@ -254,13 +257,20 @@ CREATE TABLE IF NOT EXISTS `recurring_templates` (
     `type` VARCHAR(20) NOT NULL COMMENT '类型：expense-支出, income-收入',
     `category_id` BIGINT DEFAULT NULL COMMENT '分类ID',
     `account_id` BIGINT DEFAULT NULL COMMENT '账户ID',
+    `to_account_id` BIGINT DEFAULT NULL COMMENT '目标账户ID',
+    `description` VARCHAR(255) DEFAULT NULL COMMENT '描述',
     `frequency` VARCHAR(20) NOT NULL COMMENT '频率：daily-每天, weekly-每周, monthly-每月, yearly-每年',
-    `next_due_date` DATE DEFAULT NULL COMMENT '下次执行日期',
+    `day_of_week` tinyint DEFAULT NULL COMMENT '周几（1-7，weekly专用）',
+    `day_of_month` tinyint DEFAULT NULL COMMENT '每月几号（1-31，monthly专用）',
+    `month_of_year` tinyint DEFAULT NULL COMMENT '每年几月（1-12，yearly专用）',
     `start_date` DATE DEFAULT NULL COMMENT '开始日期',
     `end_date` DATE DEFAULT NULL COMMENT '结束日期',
-    `status` VARCHAR(20) DEFAULT 'active' COMMENT '状态：active-激活, paused-暂停',
+    `max_count` int DEFAULT NULL COMMENT '最大执行次数（可选）',
+    `executed_count` INT DEFAULT 0 COMMENT '执行次数',
+    `next_trigger_date` DATE DEFAULT NULL COMMENT '下次触发日期',
     `last_triggered_at` DATETIME DEFAULT NULL COMMENT '上次触发时间',
     `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '软删除标记',
+    `status` VARCHAR(20) DEFAULT 'active' COMMENT '状态：active-激活, paused-暂停',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
@@ -269,12 +279,12 @@ CREATE TABLE IF NOT EXISTS `recurring_templates` (
     KEY `idx_next_due_date` (`next_due_date`),
     KEY `idx_user_status_due` (`user_id`, `status`, `next_due_date`),
     CONSTRAINT `fk_recurring_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_recurring_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE SET NULL,
-    CONSTRAINT `fk_recurring_account` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE SET NULL
+    CONSTRAINT `fk_recurring_category` FOREIGN KEY (`category_id`) REFERENCES `category` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `fk_recurring_account` FOREIGN KEY (`account_id`) REFERENCES `account` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='周期交易模板表';
 
 -- 交易-标签关联表
-CREATE TABLE IF NOT EXISTS `transaction_tags` (
+CREATE TABLE IF NOT EXISTS `transaction_tag` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT 'ID',
     `transaction_id` BIGINT NOT NULL COMMENT '交易ID',
     `tag_id` BIGINT NOT NULL COMMENT '标签ID',
@@ -284,6 +294,22 @@ CREATE TABLE IF NOT EXISTS `transaction_tags` (
     KEY `idx_transaction_id` (`transaction_id`),
     KEY `idx_tag_id` (`tag_id`),
     UNIQUE KEY `uk_transaction_tag` (`transaction_id`, `tag_id`),
-    CONSTRAINT `fk_transaction_tag_transaction` FOREIGN KEY (`transaction_id`) REFERENCES `transactions` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_transaction_tag_transaction` FOREIGN KEY (`transaction_id`) REFERENCES `transaction` (`id`) ON DELETE CASCADE,
     CONSTRAINT `fk_transaction_tag_tag` FOREIGN KEY (`tag_id`) REFERENCES `tags` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='交易标签关联表';
+
+CREATE TABLE refund_record (
+  `id`              BIGINT        NOT NULL AUTO_INCREMENT COMMENT '退款ID',
+  `transaction_id`       BIGINT        NOT NULL COMMENT '原交易ID',
+  `amount`          DECIMAL(16,2) NOT NULL COMMENT '退款金额',
+  `date`            DATE          NOT NULL COMMENT '退款日期',
+  `description`     VARCHAR(200)  NOT NULL DEFAULT '' COMMENT '退款说明',
+  `account_id`      BIGINT        NOT NULL COMMENT '退款入账账户ID',
+  `created_at`      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `is_deleted`      TINYINT(1)      DEFAULT 0 COMMENT '软删除标记',
+  PRIMARY KEY (id),
+  INDEX idx_transaction (transaction_id),
+  CONSTRAINT fk_rr_transaction FOREIGN KEY (transaction_id) REFERENCES transaction(id) ON DELETE CASCADE,
+  CONSTRAINT fk_rr_account FOREIGN KEY (account_id) REFERENCES account(id)
+) ENGINE=InnoDB COMMENT='退款记录表';

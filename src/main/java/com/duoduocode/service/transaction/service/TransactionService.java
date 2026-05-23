@@ -11,6 +11,7 @@ import com.duoduocode.service.transaction.entity.Transaction;
 import com.duoduocode.service.transaction.mapper.EntryMapper;
 import com.duoduocode.service.transaction.mapper.TransactionMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +29,7 @@ import java.util.Map;
  * 交易服务类
  * 复式记账核心逻辑实现
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TransactionService {
@@ -111,7 +113,7 @@ public class TransactionService {
      */
     public TransactionVO getTransactionDetail(Long id) {
         Transaction transaction = transactionMapper.selectById(id);
-        if (transaction == null || Boolean.TRUE.equals(transaction.getIsDeleted())) {
+        if (transaction == null || Integer.valueOf(1).equals(transaction.getIsDeleted())) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND, "交易不存在");
         }
         return convertToVO(transaction);
@@ -137,10 +139,12 @@ public class TransactionService {
         transaction.setAmount(dto.getAmount());
         transaction.setDescription(dto.getDescription());
         transaction.setMode(dto.getMode() != null ? dto.getMode() : MODE_SIMPLE);
+        transaction.setTransactionType(dto.getTransactionType() != null ? dto.getTransactionType() : TYPE_EXPENSE);
         transaction.setRefundStatus(REFUND_NONE);
         transaction.setRefundedAmount(BigDecimal.ZERO);
-        transaction.setIsDeleted(false);
+        transaction.setIsDeleted(0);
         transaction.setCreatedAt(LocalDateTime.now());
+        transaction.setUpdatedAt(LocalDateTime.now());
 
         // 插入交易
         transactionMapper.insert(transaction);
@@ -168,7 +172,7 @@ public class TransactionService {
     public void updateTransaction(Long id, TransactionDTO dto) {
         // 检查交易是否存在
         Transaction existing = transactionMapper.selectById(id);
-        if (existing == null || Boolean.TRUE.equals(existing.getIsDeleted())) {
+        if (existing == null || Integer.valueOf(1).equals(existing.getIsDeleted())) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND, "交易不存在");
         }
 
@@ -211,7 +215,7 @@ public class TransactionService {
     @Transactional(rollbackFor = Exception.class)
     public void deleteTransaction(Long id) {
         Transaction transaction = transactionMapper.selectById(id);
-        if (transaction == null || Boolean.TRUE.equals(transaction.getIsDeleted())) {
+        if (transaction == null || Integer.valueOf(1).equals(transaction.getIsDeleted())) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND, "交易不存在");
         }
 
@@ -229,7 +233,7 @@ public class TransactionService {
     public void refundTransaction(Long id, RefundDTO dto) {
         // 1. 检查交易是否存在
         Transaction transaction = transactionMapper.selectById(id);
-        if (transaction == null || Boolean.TRUE.equals(transaction.getIsDeleted())) {
+        if (transaction == null || Integer.valueOf(1).equals(transaction.getIsDeleted())) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND, "交易不存在");
         }
 
@@ -532,6 +536,7 @@ public class TransactionService {
             refundEntry.setTransactionId(originalTransactionId);
             refundEntry.setAccountId(original.getAccountId());
             refundEntry.setAccountType(original.getAccountType());
+            refundEntry.setIsDeleted(0);
             refundEntry.setCreatedAt(now);
 
             if (originalDebit.compareTo(BigDecimal.ZERO) > 0) {
@@ -554,6 +559,7 @@ public class TransactionService {
             refundAccountEntry.setTransactionId(originalTransactionId);
             refundAccountEntry.setAccountId(refundAccountId);
             refundAccountEntry.setAccountType("account");
+            refundAccountEntry.setIsDeleted(0);
             refundAccountEntry.setDebit(refundAmount);
             refundAccountEntry.setCredit(null);
             refundAccountEntry.setCreatedAt(now);
@@ -577,6 +583,7 @@ public class TransactionService {
         entry.setDebit(debit);
         entry.setCredit(credit);
         entry.setAccountType(accountType);
+        entry.setIsDeleted(0);
         entry.setCreatedAt(createdAt);
         return entry;
     }
@@ -688,7 +695,8 @@ public class TransactionService {
         }
 
         vo.setEntries(entryVOs);
-        vo.setTransactionType(transactionType);
+        // 使用数据库中的原始 transactionType，而不是通过分录推断的值
+        // vo.setTransactionType(transactionType);
 
         // 设置账户和分类名称
         if (accountId != null) {

@@ -9,12 +9,12 @@ import com.duoduocode.service.investment.mapper.InvestmentValueMapper;
 import com.duoduocode.service.common.BusinessException;
 import com.duoduocode.service.common.ResultCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -24,6 +24,7 @@ import java.util.Map;
 /**
  * 投资市值服务类
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class InvestmentValueService {
@@ -50,7 +51,7 @@ public class InvestmentValueService {
         }
 
         // 验证必填参数
-        if (dto.getRecordDate() == null) {
+        if (dto.getDate() == null) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "记录日期不能为空");
         }
         if (dto.getMarketValue() == null) {
@@ -59,26 +60,18 @@ public class InvestmentValueService {
 
         // 检查是否已存在该日期的记录
         InvestmentValue existing = investmentValueMapper.selectByAccountIdAndDate(
-                accountId, dto.getRecordDate().toString());
+                accountId, dto.getDate().toString());
         if (existing != null) {
             throw new BusinessException(ResultCode.DATA_ALREADY_EXISTS, "该日期已存在市值记录");
         }
 
-        // 计算收益和收益率
-        BigDecimal marketValue = dto.getMarketValue();
-        BigDecimal costBasis = dto.getCostBasis() != null ? dto.getCostBasis() : BigDecimal.ZERO;
-        BigDecimal profit = marketValue.subtract(costBasis);
-        BigDecimal profitRate = calculateProfitRate(marketValue, costBasis);
-
         // 创建市值记录
         InvestmentValue value = new InvestmentValue();
         value.setAccountId(accountId);
-        value.setRecordDate(dto.getRecordDate());
-        value.setMarketValue(marketValue);
-        value.setCostBasis(costBasis);
-        value.setProfit(profit);
-        value.setProfitRate(profitRate);
-        value.setRemark(dto.getRemark());
+        value.setDate(dto.getDate());
+        value.setMarketValue(dto.getMarketValue());
+        value.setCostBasis(dto.getCostBasis() != null ? dto.getCostBasis() : BigDecimal.ZERO);
+        value.setNote(dto.getNote());
         value.setCreatedAt(LocalDateTime.now());
         value.setUpdatedAt(LocalDateTime.now());
 
@@ -92,7 +85,8 @@ public class InvestmentValueService {
      * @param accountId 账户ID
      * @param startDate 开始日期
      * @param endDate 结束日期
-     * @return 市值历史列表     */
+     * @return 市值历史列表
+     */
     public List<InvestmentValueVO> getMarketValueHistory(Long accountId, String startDate, String endDate) {
         Account account = accountMapper.selectById(accountId);
         if (account == null) {
@@ -113,7 +107,8 @@ public class InvestmentValueService {
      * 获取最新市值
      *
      * @param accountId 账户ID
-     * @return 最新市值记录     */
+     * @return 最新市值记录
+     */
     public InvestmentValueVO getLatestMarketValue(Long accountId) {
         Account account = accountMapper.selectById(accountId);
         if (account == null) {
@@ -149,8 +144,10 @@ public class InvestmentValueService {
         if (latest != null) {
             result.put("latestMarketValue", latest.getMarketValue());
             result.put("latestCostBasis", latest.getCostBasis());
-            result.put("latestProfit", latest.getProfit());
-            result.put("latestProfitRate", latest.getProfitRate());
+            BigDecimal latestProfit = latest.getMarketValue().subtract(latest.getCostBasis());
+            result.put("latestProfit", latestProfit);
+            BigDecimal latestProfitRate = calculateProfitRate(latest.getMarketValue(), latest.getCostBasis());
+            result.put("latestProfitRate", latestProfitRate);
         } else {
             result.put("latestMarketValue", BigDecimal.ZERO);
             result.put("latestCostBasis", BigDecimal.ZERO);
@@ -158,13 +155,9 @@ public class InvestmentValueService {
             result.put("latestProfitRate", BigDecimal.ZERO);
         }
 
-        // 计算总收入
+        // 计算总收益（根据所有记录）
         BigDecimal totalProfit = investmentValueMapper.calculateTotalProfit(accountId);
         result.put("totalProfit", totalProfit != null ? totalProfit : BigDecimal.ZERO);
-
-        // 计算最新收益率
-        BigDecimal latestProfitRate = investmentValueMapper.calculateLatestProfitRate(accountId);
-        result.put("totalProfitRate", latestProfitRate != null ? latestProfitRate : BigDecimal.ZERO);
 
         return result;
     }
@@ -188,7 +181,7 @@ public class InvestmentValueService {
             return BigDecimal.ZERO;
         }
         return marketValue.subtract(costBasis)
-                .divide(costBasis, 4, RoundingMode.HALF_UP)
+                .divide(costBasis, 4, java.math.RoundingMode.HALF_UP)
                 .multiply(new BigDecimal("100"));
     }
 }

@@ -9,6 +9,7 @@ import com.duoduocode.service.investment.mapper.InvestmentIncomeMapper;
 import com.duoduocode.service.common.BusinessException;
 import com.duoduocode.service.common.ResultCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +22,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 理财收益服务类 */
+ * 理财收益服务类
+ */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class InvestmentIncomeService {
@@ -48,28 +51,29 @@ public class InvestmentIncomeService {
         }
 
         // 验证必填参数
-        if (dto.getIncomeDate() == null) {
+        if (dto.getDate() == null) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "收益日期不能为空");
         }
-        if (dto.getIncomeAmount() == null) {
+        if (dto.getAmount() == null) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "收益金额不能为空");
         }
-        if (dto.getIncomeType() == null || dto.getIncomeType().trim().isEmpty()) {
+        if (dto.getType() == null || dto.getType().trim().isEmpty()) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "收益类型不能为空");
         }
 
         // 验证收益类型
-        if (!isValidIncomeType(dto.getIncomeType())) {
-            throw new BusinessException(ResultCode.PARAM_ERROR, "收益类型无效，必须是 interest、dividend、capital_gain 或 other");
+        if (!isValidIncomeType(dto.getType())) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "收益类型无效，必须是 daily、dividend 或 maturity");
         }
 
         // 创建收益记录
         InvestmentIncome income = new InvestmentIncome();
         income.setAccountId(accountId);
-        income.setIncomeDate(dto.getIncomeDate());
-        income.setIncomeAmount(dto.getIncomeAmount());
-        income.setIncomeType(dto.getIncomeType());
-        income.setDescription(dto.getDescription());
+        income.setDate(dto.getDate());
+        income.setAmount(dto.getAmount());
+        income.setType(dto.getType());
+        income.setNote(dto.getNote());
+        income.setIsReinvested(dto.getIsReinvested() != null ? dto.getIsReinvested() : 0);
         income.setTransactionId(dto.getTransactionId());
         income.setCreatedAt(LocalDateTime.now());
         income.setUpdatedAt(LocalDateTime.now());
@@ -155,7 +159,7 @@ public class InvestmentIncomeService {
 
         // 按类型统计收入
         Map<String, BigDecimal> incomeByType = new HashMap<>();
-        String[] types = {"interest", "dividend", "capital_gain", "other"};
+        String[] types = {"daily", "dividend", "maturity"};
         for (String type : types) {
             BigDecimal amount = investmentIncomeMapper.calculateIncomeByType(accountId, type);
             incomeByType.put(type, amount != null ? amount : BigDecimal.ZERO);
@@ -182,7 +186,7 @@ public class InvestmentIncomeService {
         InvestmentIncomeVO vo = new InvestmentIncomeVO();
         BeanUtils.copyProperties(income, vo);
         // 触发类型名称设置
-        vo.setIncomeType(income.getIncomeType());
+        vo.setType(income.getType());
         return vo;
     }
 
@@ -190,9 +194,8 @@ public class InvestmentIncomeService {
      * 验证收益类型是否有效
      */
     private boolean isValidIncomeType(String type) {
-        return "interest".equals(type) ||
+        return "daily".equals(type) ||
                "dividend".equals(type) ||
-               "capital_gain".equals(type) ||
-               "other".equals(type);
+               "maturity".equals(type);
     }
 }

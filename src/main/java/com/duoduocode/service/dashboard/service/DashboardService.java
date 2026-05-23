@@ -5,6 +5,7 @@ import com.duoduocode.service.dashboard.dto.DashboardVO;
 import com.duoduocode.service.dashboard.mapper.DashboardMapper;
 import com.duoduocode.service.account.entity.Account;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +21,7 @@ import java.util.Map;
 /**
  * Dashboard 服务类
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DashboardService {

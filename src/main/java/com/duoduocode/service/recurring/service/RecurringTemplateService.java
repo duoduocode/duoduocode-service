@@ -6,6 +6,7 @@ import com.duoduocode.service.recurring.dto.RecurringTemplateVO;
 import com.duoduocode.service.recurring.entity.RecurringTemplate;
 import com.duoduocode.service.recurring.mapper.RecurringTemplateMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +18,7 @@ import java.util.stream.Collectors;
 /**
  * 周期交易模板 Service
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RecurringTemplateService {
@@ -67,7 +69,7 @@ public class RecurringTemplateService {
         template.setCategoryId(dto.getCategoryId());
         template.setAccountId(dto.getAccountId());
         template.setToAccountId(dto.getToAccountId());
-        template.setDescription(dto.getDescription());
+        template.setDescription(dto.getDescription() != null ? dto.getDescription() : "");
         template.setFrequency(dto.getFrequency());
         template.setDayOfWeek(dto.getDayOfWeek());
         template.setDayOfMonth(dto.getDayOfMonth());
@@ -192,9 +194,7 @@ public class RecurringTemplateService {
 
         // 重新计算下次触发日期
         LocalDate nextTriggerDate = calculateNextTriggerDate(template);
-        recurringTemplateMapper.updateStatus(id, "active");
-
-        // 更新下次触发日期
+        template.setStatus("active");
         template.setNextTriggerDate(nextTriggerDate);
         recurringTemplateMapper.updateById(template);
     }
@@ -262,8 +262,10 @@ public class RecurringTemplateService {
         vo.setExecutedCount(template.getExecutedCount());
         vo.setNextTriggerDate(template.getNextTriggerDate());
         vo.setLastTriggeredAt(template.getLastTriggeredAt());
+        vo.setIsDeleted(template.getIsDeleted());
         vo.setStatus(template.getStatus());
         vo.setCreatedAt(template.getCreatedAt());
+        vo.setUpdatedAt(template.getUpdatedAt());
         return vo;
     }
 }

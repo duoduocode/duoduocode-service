@@ -9,6 +9,7 @@ import com.duoduocode.service.transaction.dto.TransactionVO;
 import com.duoduocode.service.transaction.mapper.TransactionMapper;
 import com.duoduocode.service.transaction.entity.Transaction;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +24,7 @@ import java.util.Map;
 /**
  * 账户服务类
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AccountService {
@@ -123,6 +125,7 @@ public class AccountService {
         // 检查名称是否重复
         int count = accountMapper.countByUserIdAndName(userId, name, null);
         if (count > 0) {
+            log.warn("创建账户失败: 名称已存在, userId={}, name={}", userId, name);
             throw new BusinessException(ResultCode.BUSINESS_ERROR, "账户名称已存在");
         }
 
@@ -152,6 +155,7 @@ public class AccountService {
         account.setUpdatedAt(LocalDateTime.now());
 
         accountMapper.insert(account);
+        log.info("账户创建成功, accountId={}, name={}, type={}", account.getId(), name, type);
         return account.getId();
     }
 

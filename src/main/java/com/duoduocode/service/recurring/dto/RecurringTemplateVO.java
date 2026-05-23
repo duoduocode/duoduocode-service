@@ -21,14 +21,19 @@ public class RecurringTemplateVO {
     private String name;
 
     /**
-     * 交易类型：expense-支出, income-收入, transfer-转账
+     * 交易金额
+     */
+    private BigDecimal amount;
+
+    /**
+     * 类型：expense-支出, income-收入
      */
     private String type;
 
     /**
-     * 交易金额
+     * 类型名称
      */
-    private BigDecimal amount;
+    private String typeName;
 
     /**
      * 分类ID
@@ -51,7 +56,7 @@ public class RecurringTemplateVO {
     private String accountName;
 
     /**
-     * 目标账户ID（转账时使用）
+     * 目标账户ID
      */
     private Long toAccountId;
 
@@ -61,27 +66,32 @@ public class RecurringTemplateVO {
     private String toAccountName;
 
     /**
-     * 交易描述
+     * 描述
      */
     private String description;
 
     /**
-     * 频率：daily-每日, weekly-每周, monthly-每月, yearly-每年
+     * 频率：daily-每天, weekly-每周, monthly-每月, yearly-每年
      */
     private String frequency;
 
     /**
-     * 星期几（1-7，weekly时使用）
+     * 频率名称
+     */
+    private String frequencyName;
+
+    /**
+     * 周几（1-7，weekly专用）
      */
     private Integer dayOfWeek;
 
     /**
-     * 每月几号（1-31，monthly时使用）
+     * 每月几号（1-31，monthly专用）
      */
     private Integer dayOfMonth;
 
     /**
-     * 每年几月（1-12，yearly时使用）
+     * 每年几月（1-12，yearly专用）
      */
     private Integer monthOfYear;
 
@@ -96,12 +106,12 @@ public class RecurringTemplateVO {
     private LocalDate endDate;
 
     /**
-     * 最大执行次数
+     * 最大执行次数（可选）
      */
     private Integer maxCount;
 
     /**
-     * 已执行次数
+     * 执行次数
      */
     private Integer executedCount;
 
@@ -116,7 +126,12 @@ public class RecurringTemplateVO {
     private LocalDateTime lastTriggeredAt;
 
     /**
-     * 状态：active-活跃, paused-暂停, completed-已完成
+     * 软删除标记
+     */
+    private Integer isDeleted;
+
+    /**
+     * 状态：active-激活, paused-暂停
      */
     private String status;
 
@@ -124,6 +139,11 @@ public class RecurringTemplateVO {
      * 创建时间
      */
     private LocalDateTime createdAt;
+
+    /**
+     * 更新时间
+     */
+    private LocalDateTime updatedAt;
 
     // Getters and Setters
 
@@ -143,20 +163,40 @@ public class RecurringTemplateVO {
         this.name = name;
     }
 
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
     public BigDecimal getAmount() {
         return amount;
     }
 
     public void setAmount(BigDecimal amount) {
         this.amount = amount;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+        if (type != null) {
+            switch (type) {
+                case "expense":
+                    this.typeName = "支出";
+                    break;
+                case "income":
+                    this.typeName = "收入";
+                    break;
+                default:
+                    this.typeName = "未知";
+            }
+        }
+    }
+
+    public String getTypeName() {
+        return typeName;
+    }
+
+    public void setTypeName(String typeName) {
+        this.typeName = typeName;
     }
 
     public Long getCategoryId() {
@@ -221,6 +261,32 @@ public class RecurringTemplateVO {
 
     public void setFrequency(String frequency) {
         this.frequency = frequency;
+        if (frequency != null) {
+            switch (frequency) {
+                case "daily":
+                    this.frequencyName = "每天";
+                    break;
+                case "weekly":
+                    this.frequencyName = "每周";
+                    break;
+                case "monthly":
+                    this.frequencyName = "每月";
+                    break;
+                case "yearly":
+                    this.frequencyName = "每年";
+                    break;
+                default:
+                    this.frequencyName = "未知";
+            }
+        }
+    }
+
+    public String getFrequencyName() {
+        return frequencyName;
+    }
+
+    public void setFrequencyName(String frequencyName) {
+        this.frequencyName = frequencyName;
     }
 
     public Integer getDayOfWeek() {
@@ -295,6 +361,14 @@ public class RecurringTemplateVO {
         this.lastTriggeredAt = lastTriggeredAt;
     }
 
+    public Integer getIsDeleted() {
+        return isDeleted;
+    }
+
+    public void setIsDeleted(Integer isDeleted) {
+        this.isDeleted = isDeleted;
+    }
+
     public String getStatus() {
         return status;
     }
@@ -309,5 +383,13 @@ public class RecurringTemplateVO {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }

@@ -6,7 +6,8 @@ import java.time.LocalDateTime;
 
 /**
  * 投资市值记录实体类
- * 对应 investment_value �? */
+ * 对应 investment_value 表
+ */
 public class InvestmentValue {
 
     /**
@@ -20,12 +21,8 @@ public class InvestmentValue {
     private Long accountId;
 
     /**
-     * 记录日期
+     * 市值
      */
-    private LocalDate recordDate;
-
-    /**
-     * 市�?     */
     private BigDecimal marketValue;
 
     /**
@@ -34,19 +31,19 @@ public class InvestmentValue {
     private BigDecimal costBasis;
 
     /**
-     * 收益
+     * 记录日期
      */
-    private BigDecimal profit;
-
-    /**
-     * 收益率（百分比）
-     */
-    private BigDecimal profitRate;
+    private LocalDate date;
 
     /**
      * 备注
      */
-    private String remark;
+    private String note;
+
+    /**
+     * 软删除标记
+     */
+    private Integer isDeleted;
 
     /**
      * 创建时间
@@ -76,14 +73,6 @@ public class InvestmentValue {
         this.accountId = accountId;
     }
 
-    public LocalDate getRecordDate() {
-        return recordDate;
-    }
-
-    public void setRecordDate(LocalDate recordDate) {
-        this.recordDate = recordDate;
-    }
-
     public BigDecimal getMarketValue() {
         return marketValue;
     }
@@ -100,28 +89,28 @@ public class InvestmentValue {
         this.costBasis = costBasis;
     }
 
-    public BigDecimal getProfit() {
-        return profit;
+    public LocalDate getDate() {
+        return date;
     }
 
-    public void setProfit(BigDecimal profit) {
-        this.profit = profit;
+    public void setDate(LocalDate date) {
+        this.date = date;
     }
 
-    public BigDecimal getProfitRate() {
-        return profitRate;
+    public String getNote() {
+        return note;
     }
 
-    public void setProfitRate(BigDecimal profitRate) {
-        this.profitRate = profitRate;
+    public void setNote(String note) {
+        this.note = note;
     }
 
-    public String getRemark() {
-        return remark;
+    public Integer getIsDeleted() {
+        return isDeleted;
     }
 
-    public void setRemark(String remark) {
-        this.remark = remark;
+    public void setIsDeleted(Integer isDeleted) {
+        this.isDeleted = isDeleted;
     }
 
     public LocalDateTime getCreatedAt() {

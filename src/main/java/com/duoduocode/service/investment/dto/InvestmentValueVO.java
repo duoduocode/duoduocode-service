@@ -5,7 +5,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * 投资市值视图对�? * 用于返回市值记�? */
+ * 投资市值视图对象
+ * 用于返回市值记录
+ */
 public class InvestmentValueVO {
 
     /**
@@ -21,10 +23,11 @@ public class InvestmentValueVO {
     /**
      * 记录日期
      */
-    private LocalDate recordDate;
+    private LocalDate date;
 
     /**
-     * 市�?     */
+     * 市值
+     */
     private BigDecimal marketValue;
 
     /**
@@ -33,19 +36,9 @@ public class InvestmentValueVO {
     private BigDecimal costBasis;
 
     /**
-     * 收益
-     */
-    private BigDecimal profit;
-
-    /**
-     * 收益率（百分比）
-     */
-    private BigDecimal profitRate;
-
-    /**
      * 备注
      */
-    private String remark;
+    private String note;
 
     /**
      * 创建时间
@@ -75,12 +68,12 @@ public class InvestmentValueVO {
         this.accountId = accountId;
     }
 
-    public LocalDate getRecordDate() {
-        return recordDate;
+    public LocalDate getDate() {
+        return date;
     }
 
-    public void setRecordDate(LocalDate recordDate) {
-        this.recordDate = recordDate;
+    public void setDate(LocalDate date) {
+        this.date = date;
     }
 
     public BigDecimal getMarketValue() {
@@ -99,28 +92,12 @@ public class InvestmentValueVO {
         this.costBasis = costBasis;
     }
 
-    public BigDecimal getProfit() {
-        return profit;
+    public String getNote() {
+        return note;
     }
 
-    public void setProfit(BigDecimal profit) {
-        this.profit = profit;
-    }
-
-    public BigDecimal getProfitRate() {
-        return profitRate;
-    }
-
-    public void setProfitRate(BigDecimal profitRate) {
-        this.profitRate = profitRate;
-    }
-
-    public String getRemark() {
-        return remark;
-    }
-
-    public void setRemark(String remark) {
-        this.remark = remark;
+    public void setNote(String note) {
+        this.note = note;
     }
 
     public LocalDateTime getCreatedAt() {

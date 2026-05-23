@@ -4,16 +4,19 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
- * 投资市值数据传输对�? * 用于记录市�? */
+ * 投资市值数据传输对象
+ * 用于记录市值
+ */
 public class InvestmentValueDTO {
 
     /**
      * 记录日期
      */
-    private LocalDate recordDate;
+    private LocalDate date;
 
     /**
-     * 市�?     */
+     * 市值
+     */
     private BigDecimal marketValue;
 
     /**
@@ -24,16 +27,16 @@ public class InvestmentValueDTO {
     /**
      * 备注
      */
-    private String remark;
+    private String note;
 
     // Getters and Setters
 
-    public LocalDate getRecordDate() {
-        return recordDate;
+    public LocalDate getDate() {
+        return date;
     }
 
-    public void setRecordDate(LocalDate recordDate) {
-        this.recordDate = recordDate;
+    public void setDate(LocalDate date) {
+        this.date = date;
     }
 
     public BigDecimal getMarketValue() {
@@ -52,11 +55,11 @@ public class InvestmentValueDTO {
         this.costBasis = costBasis;
     }
 
-    public String getRemark() {
-        return remark;
+    public String getNote() {
+        return note;
     }
 
-    public void setRemark(String remark) {
-        this.remark = remark;
+    public void setNote(String note) {
+        this.note = note;
     }
 }

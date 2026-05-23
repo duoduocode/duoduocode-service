@@ -2,6 +2,7 @@ package com.duoduocode.service.report.service;
 
 import com.duoduocode.service.report.dto.*;
 import com.duoduocode.service.report.mapper.ReportMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -9,6 +10,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 
+@Slf4j
 @Service
 public class ReportService {
 

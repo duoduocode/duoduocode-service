@@ -10,25 +10,33 @@
         <result column="amount" property="amount"/>
         <result column="description" property="description"/>
         <result column="mode" property="mode"/>
+        <result column="transaction_type" property="transactionType"/>
         <result column="refund_status" property="refundStatus"/>
         <result column="refunded_amount" property="refundedAmount"/>
+        <result column="net_amount" property="netAmount"/>
         <result column="is_deleted" property="isDeleted"/>
         <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, user_id, date, time, amount, description, mode, refund_status,
-        refunded_amount, is_deleted, created_at
+        id, user_id, date, time, amount, description, mode, transaction_type,
+        refund_status, refunded_amount, net_amount, is_deleted, created_at, updated_at
+    </sql>
+
+    <sql id="Transaction_Column_List">
+        t.id, t.user_id, t.date, t.time, t.amount, t.description, t.mode, t.transaction_type,
+        t.refund_status, t.refunded_amount, t.net_amount, t.is_deleted, t.created_at, t.updated_at
     </sql>
 
     <!-- 插入交易 -->
     <insert id="insert" parameterType="com.duoduocode.service.transaction.entity.Transaction" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO `transaction` (
-            user_id, date, time, amount, description, mode, refund_status,
-            refunded_amount, is_deleted, created_at
+            user_id, date, time, amount, description, mode, transaction_type, refund_status,
+            refunded_amount, is_deleted, created_at, updated_at
         ) VALUES (
-            #{userId}, #{date}, #{time}, #{amount}, #{description}, #{mode}, #{refundStatus},
-            #{refundedAmount}, #{isDeleted}, #{createdAt}
+            #{userId}, #{date}, #{time}, #{amount}, #{description}, #{mode}, #{transactionType}, #{refundStatus},
+            #{refundedAmount}, #{isDeleted}, #{createdAt}, #{updatedAt}
         )
     </insert>
 
@@ -41,8 +49,11 @@
             <if test="amount != null">amount = #{amount},</if>
             <if test="description != null">description = #{description},</if>
             <if test="mode != null">mode = #{mode},</if>
+            <if test="transactionType != null">transaction_type = #{transactionType},</if>
             <if test="refundStatus != null">refund_status = #{refundStatus},</if>
             <if test="refundedAmount != null">refunded_amount = #{refundedAmount},</if>
+            <if test="netAmount != null">net_amount = #{netAmount},</if>
+            <if test="updatedAt != null">updated_at = #{updatedAt},</if>
         </set>
         WHERE id = #{id}
     </update>
@@ -51,7 +62,7 @@
     <select id="selectById" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM `transaction`
-        WHERE id = #{id}
+        WHERE id = #{id} AND is_deleted = 0
     </select>
 
     <!-- 根据用户ID查询交易列表（分页） -->
@@ -123,7 +134,7 @@
         <if test="accountId != null">
             AND id IN (
                 SELECT DISTINCT transaction_id FROM entry
-                WHERE account_id = #{accountId}
+                WHERE account_id = #{accountId} AND is_deleted = 0
             )
         </if>
         <if test="minAmount != null and minAmount != ''">
@@ -153,7 +164,7 @@
         <if test="accountId != null">
             AND id IN (
                 SELECT DISTINCT transaction_id FROM entry
-                WHERE account_id = #{accountId}
+                WHERE account_id = #{accountId} AND is_deleted = 0
             )
         </if>
         <if test="minAmount != null and minAmount != ''">
@@ -174,13 +185,14 @@
     <update id="updateRefundStatus">
         UPDATE `transaction`
         SET refund_status = #{refundStatus},
-            refunded_amount = #{refundedAmount}
+            refunded_amount = #{refundedAmount},
+            updated_at = NOW()
         WHERE id = #{id}
     </update>
 
     <!-- 高级搜索交易（支持多条件组合筛选） -->
     <select id="searchTransactions" resultMap="BaseResultMap">
-        SELECT DISTINCT t.<include refid="Base_Column_List"/>
+        SELECT <include refid="Transaction_Column_List"/>
         FROM `transaction` t
         LEFT JOIN entry e ON t.id = e.transaction_id
         WHERE t.user_id = #{userId} AND t.is_deleted = 0
@@ -224,6 +236,10 @@
         <if test="query.keyword != null and query.keyword != ''">
             AND t.description LIKE CONCAT('%', #{query.keyword}, '%')
         </if>
+        <!-- 交易类型筛选 -->
+        <if test="query.type != null and query.type != ''">
+            AND t.transaction_type = #{query.type}
+        </if>
         <!-- 最小金额 -->
         <if test="query.minAmount != null">
             AND t.amount >= #{query.minAmount}
@@ -239,6 +255,7 @@
                 WHERE e2.transaction_id = t.id
                 AND e2.account_id = #{query.categoryId}
                 AND e2.account_type = 'category'
+                AND e2.is_deleted = 0
             )
         </if>
         <!-- 账户ID筛选 -->
@@ -248,6 +265,7 @@
                 WHERE e3.transaction_id = t.id
                 AND e3.account_id = #{query.accountId}
                 AND e3.account_type = 'account'
+                AND e3.is_deleted = 0
             )
         </if>
         <!-- 开始日期 -->
@@ -258,12 +276,13 @@
         <if test="query.endDate != null and query.endDate != ''">
             AND t.date &lt;= #{query.endDate}
         </if>
-        <!-- 交易类型筛选 -->
+        <!-- 交易类型筛选（按 expense/income） -->
         <if test="query.type != null and query.type != ''">
             AND EXISTS (
                 SELECT 1 FROM entry e4
                 WHERE e4.transaction_id = t.id
                 AND e4.account_type = 'category'
+                AND e4.is_deleted = 0
                 <choose>
                     <when test="query.type == 'expense'">
                         AND e4.debit IS NOT NULL AND e4.debit &gt; 0
@@ -283,6 +302,7 @@
         INNER JOIN entry e ON t.id = e.transaction_id
         WHERE e.account_id = #{categoryId}
         AND e.account_type = 'category'
+        AND e.is_deleted = 0
         AND t.is_deleted = 0
     </select>
 
@@ -292,6 +312,44 @@
         SET account_id = #{newCategoryId}
         WHERE account_id = #{oldCategoryId}
         AND account_type = 'category'
+        AND is_deleted = 0
     </update>
+
+    <!-- 根据账户ID查询交易列表（分页） -->
+    <select id="selectByAccountId" resultMap="BaseResultMap">
+        SELECT <include refid="Transaction_Column_List"/>
+        FROM `transaction` t
+        INNER JOIN entry e ON t.id = e.transaction_id
+        WHERE e.account_id = #{accountId}
+          AND e.account_type = 'account'
+          AND e.is_deleted = 0
+          AND t.is_deleted = 0
+        ORDER BY t.date DESC, t.time DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 根据账户ID统计交易总数 -->
+    <select id="countByAccountId" resultType="long">
+        SELECT COUNT(DISTINCT t.id)
+        FROM `transaction` t
+        INNER JOIN entry e ON t.id = e.transaction_id
+        WHERE e.account_id = #{accountId}
+          AND e.account_type = 'account'
+          AND e.is_deleted = 0
+          AND t.is_deleted = 0
+    </select>
+
+    <!-- 获取账户最近交易列表 -->
+    <select id="selectRecentByAccountId" resultMap="BaseResultMap">
+        SELECT <include refid="Transaction_Column_List"/>
+        FROM `transaction` t
+        INNER JOIN entry e ON t.id = e.transaction_id
+        WHERE e.account_id = #{accountId}
+          AND e.account_type = 'account'
+          AND e.is_deleted = 0
+          AND t.is_deleted = 0
+        ORDER BY t.date DESC, t.time DESC
+        LIMIT #{limit}
+    </select>
 
 </mapper>

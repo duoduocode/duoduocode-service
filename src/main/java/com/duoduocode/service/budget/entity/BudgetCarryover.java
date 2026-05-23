@@ -13,6 +13,11 @@ public class BudgetCarryover {
     private Long id;
 
     /**
+     * 用户ID
+     */
+    private Long userId;
+
+    /**
      * 分类ID
      */
     private Long categoryId;
@@ -45,6 +50,14 @@ public class BudgetCarryover {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 
     public Long getCategoryId() {

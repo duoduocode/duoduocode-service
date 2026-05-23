@@ -3,7 +3,11 @@ package com.duoduocode.service.user.controller;
 import com.duoduocode.service.common.Result;
 import com.duoduocode.service.security.SecurityContext;
 import com.duoduocode.service.user.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -12,9 +16,11 @@ import java.util.Map;
  * 用户控制器
  * 处理用户资料的获取和更新
  */
+@Slf4j
 @RestController
 @RequestMapping("/v1/user")
 @RequiredArgsConstructor
+@Tag(name = "用户管理", description = "用户资料的获取和更新")
 public class UserController {
 
     private final UserService userService;
@@ -26,8 +32,10 @@ public class UserController {
      * @return 用户资料（昵称、头像、手机号等）
      */
     @GetMapping("/profile")
+    @Operation(summary = "获取用户资料", description = "获取当前登录用户的个人资料")
     public Result<Map<String, Object>> getProfile() {
         Long userId = SecurityContext.requireUserId();
+        log.debug("GET /v1/user/profile - userId={}", userId);
         Map<String, Object> profile = userService.getUserProfile(userId);
         return Result.success(profile);
     }
@@ -42,8 +50,10 @@ public class UserController {
      * @return 操作结果
      */
     @PutMapping("/profile")
-    public Result<Void> updateProfile(@RequestBody Map<String, Object> body) {
+    @Operation(summary = "更新用户资料", description = "批量更新用户资料（昵称、头像、性别等）")
+    public Result<Void> updateProfile(@Parameter(description = "更新数据") @RequestBody Map<String, Object> body) {
         Long userId = SecurityContext.requireUserId();
+        log.info("PUT /v1/user/profile - userId={}, fields={}", userId, body.keySet());
         userService.updateProfile(userId, body);
         return Result.success("更新成功", null);
     }
@@ -56,7 +66,8 @@ public class UserController {
      * @return 操作结果
      */
     @PutMapping("/nickname")
-    public Result<Void> updateNickname(@RequestBody Map<String, String> body) {
+    @Operation(summary = "更新昵称", description = "单独更新用户昵称")
+    public Result<Void> updateNickname(@Parameter(description = "昵称数据") @RequestBody Map<String, String> body) {
         Long userId = SecurityContext.requireUserId();
         String nickname = body.get("nickname");
         userService.updateNickname(userId, nickname);
@@ -71,7 +82,8 @@ public class UserController {
      * @return 操作结果
      */
     @PutMapping("/avatar")
-    public Result<Void> updateAvatar(@RequestBody Map<String, String> body) {
+    @Operation(summary = "更新头像", description = "单独更新用户头像")
+    public Result<Void> updateAvatar(@Parameter(description = "头像数据") @RequestBody Map<String, String> body) {
         Long userId = SecurityContext.requireUserId();
         String avatarUrl = body.get("avatarUrl");
         userService.updateAvatarUrl(userId, avatarUrl);

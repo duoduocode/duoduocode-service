@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.duoduocode.service.investment.mapper.InvestmentIncomeMapper">
+
+    <resultMap id="BaseResultMap" type="com.duoduocode.service.investment.entity.InvestmentIncome">
+        <id column="id" property="id"/>
+        <result column="account_id" property="accountId"/>
+        <result column="amount" property="amount"/>
+        <result column="date" property="date"/>
+        <result column="note" property="note"/>
+        <result column="type" property="type"/>
+        <result column="is_reinvested" property="isReinvested"/>
+        <result column="transaction_id" property="transactionId"/>
+        <result column="is_deleted" property="isDeleted"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, account_id, amount, date, note, type, is_reinvested, transaction_id, is_deleted, created_at, updated_at
+    </sql>
+
+    <insert id="insert" parameterType="com.duoduocode.service.investment.entity.InvestmentIncome" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO investment_income (
+            account_id, amount, date, note, type, is_reinvested, transaction_id, is_deleted, created_at, updated_at
+        ) VALUES (
+            #{accountId}, #{amount}, #{date}, #{note}, #{type}, #{isReinvested}, #{transactionId}, 0, NOW(), NOW()
+        )
+    </insert>
+
+    <update id="updateById" parameterType="com.duoduocode.service.investment.entity.InvestmentIncome">
+        UPDATE investment_income
+        SET account_id = #{accountId},
+            amount = #{amount},
+            date = #{date},
+            note = #{note},
+            type = #{type},
+            is_reinvested = #{isReinvested},
+            transaction_id = #{transactionId},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM investment_income
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByAccountId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM investment_income
+        WHERE account_id = #{accountId}
+          AND is_deleted = 0
+        ORDER BY date DESC
+    </select>
+
+    <select id="selectByAccountIdAndDateRange" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM investment_income
+        WHERE account_id = #{accountId}
+          AND is_deleted = 0
+          AND date >= #{startDate}
+          AND date &lt;= #{endDate}
+        ORDER BY date DESC
+    </select>
+
+    <select id="selectByAccountIdAndMonth" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM investment_income
+        WHERE account_id = #{accountId}
+          AND is_deleted = 0
+          AND DATE_FORMAT(date, '%Y-%m') = #{month}
+        ORDER BY date DESC
+    </select>
+
+    <select id="calculateTotalIncome" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(amount), 0)
+        FROM investment_income
+        WHERE account_id = #{accountId}
+          AND is_deleted = 0
+    </select>
+
+    <select id="calculateMonthlyIncome" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(amount), 0)
+        FROM investment_income
+        WHERE account_id = #{accountId}
+          AND is_deleted = 0
+          AND DATE_FORMAT(date, '%Y-%m') = #{month}
+    </select>
+
+    <select id="calculateIncomeByType" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(amount), 0)
+        FROM investment_income
+        WHERE account_id = #{accountId}
+          AND is_deleted = 0
+          AND type = #{type}
+    </select>
+
+    <delete id="deleteById">
+        DELETE FROM investment_income
+        WHERE id = #{id}
+    </delete>
+
+</mapper>

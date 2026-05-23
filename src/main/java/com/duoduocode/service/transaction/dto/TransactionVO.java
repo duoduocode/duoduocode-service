@@ -47,6 +47,11 @@ public class TransactionVO {
     private String mode;
 
     /**
+     * 交易类型
+     */
+    private String transactionType;
+
+    /**
      * 退款状态
      */
     private String refundStatus;
@@ -57,9 +62,9 @@ public class TransactionVO {
     private BigDecimal refundedAmount;
 
     /**
-     * 交易类型
+     * 净金额
      */
-    private String transactionType;
+    private BigDecimal netAmount;
 
     /**
      * 账户名称
@@ -75,6 +80,11 @@ public class TransactionVO {
      * 创建时间
      */
     private LocalDateTime createdAt;
+
+    /**
+     * 更新时间
+     */
+    private LocalDateTime updatedAt;
 
     // Getters and Setters
 
@@ -134,6 +144,14 @@ public class TransactionVO {
         this.mode = mode;
     }
 
+    public String getTransactionType() {
+        return transactionType;
+    }
+
+    public void setTransactionType(String transactionType) {
+        this.transactionType = transactionType;
+    }
+
     public String getRefundStatus() {
         return refundStatus;
     }
@@ -150,12 +168,12 @@ public class TransactionVO {
         this.refundedAmount = refundedAmount;
     }
 
-    public String getTransactionType() {
-        return transactionType;
+    public BigDecimal getNetAmount() {
+        return netAmount;
     }
 
-    public void setTransactionType(String transactionType) {
-        this.transactionType = transactionType;
+    public void setNetAmount(BigDecimal netAmount) {
+        this.netAmount = netAmount;
     }
 
     public String getAccountName() {
@@ -180,5 +198,13 @@ public class TransactionVO {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }

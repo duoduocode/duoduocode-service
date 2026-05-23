@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.duoduocode.service.investment.mapper.InvestmentValueMapper">
+
+    <resultMap id="BaseResultMap" type="com.duoduocode.service.investment.entity.InvestmentValue">
+        <id column="id" property="id"/>
+        <result column="account_id" property="accountId"/>
+        <result column="market_value" property="marketValue"/>
+        <result column="cost_basis" property="costBasis"/>
+        <result column="date" property="date"/>
+        <result column="note" property="note"/>
+        <result column="is_deleted" property="isDeleted"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, account_id, market_value, cost_basis, date, note, is_deleted, created_at, updated_at
+    </sql>
+
+    <insert id="insert" parameterType="com.duoduocode.service.investment.entity.InvestmentValue" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO investment_value (
+            account_id, market_value, cost_basis, date, note, is_deleted, created_at, updated_at
+        ) VALUES (
+            #{accountId}, #{marketValue}, #{costBasis}, #{date}, #{note}, 0, NOW(), NOW()
+        )
+    </insert>
+
+    <update id="updateById" parameterType="com.duoduocode.service.investment.entity.InvestmentValue">
+        UPDATE investment_value
+        SET account_id = #{accountId},
+            market_value = #{marketValue},
+            cost_basis = #{costBasis},
+            date = #{date},
+            note = #{note},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM investment_value
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByAccountId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM investment_value
+        WHERE account_id = #{accountId}
+          AND is_deleted = 0
+        ORDER BY date DESC
+    </select>
+
+    <select id="selectByAccountIdAndDateRange" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM investment_value
+        WHERE account_id = #{accountId}
+          AND is_deleted = 0
+          AND date >= #{startDate}
+          AND date &lt;= #{endDate}
+        ORDER BY date DESC
+    </select>
+
+    <select id="selectLatestByAccountId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM investment_value
+        WHERE account_id = #{accountId}
+          AND is_deleted = 0
+        ORDER BY date DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectByAccountIdAndDate" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM investment_value
+        WHERE account_id = #{accountId}
+          AND is_deleted = 0
+          AND date = #{recordDate}
+        LIMIT 1
+    </select>
+
+    <delete id="deleteById">
+        DELETE FROM investment_value
+        WHERE id = #{id}
+    </delete>
+
+    <select id="calculateTotalProfit" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(market_value - cost_basis), 0)
+        FROM investment_value
+        WHERE account_id = #{accountId}
+          AND is_deleted = 0
+    </select>
+
+    <select id="calculateLatestProfitRate" resultType="java.math.BigDecimal">
+        SELECT COALESCE(
+            (SELECT CASE
+                WHEN cost_basis > 0 THEN (market_value - cost_basis) / cost_basis * 100
+                ELSE 0
+            END
+            FROM investment_value
+            WHERE account_id = #{accountId}
+              AND is_deleted = 0
+            ORDER BY date DESC
+            LIMIT 1), 0
+        )
+    </select>
+
+</mapper>

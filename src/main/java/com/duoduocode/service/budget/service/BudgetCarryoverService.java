@@ -9,6 +9,7 @@ import com.duoduocode.service.common.BusinessException;
 import com.duoduocode.service.common.ResultCode;
 import com.duoduocode.service.transaction.mapper.EntryMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ import java.util.Map;
 
 /**
  * 预算结转服务类 */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class BudgetCarryoverService {

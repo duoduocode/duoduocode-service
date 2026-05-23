@@ -9,37 +9,59 @@
         <result column="debit" property="debit"/>
         <result column="credit" property="credit"/>
         <result column="account_type" property="accountType"/>
+        <result column="is_deleted" property="isDeleted"/>
         <result column="created_at" property="createdAt"/>
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, transaction_id, account_id, debit, credit, account_type, created_at
+        id, transaction_id, account_id, debit, credit, account_type, is_deleted, created_at
     </sql>
 
     <!-- 插入分录 -->
     <insert id="insert" parameterType="com.duoduocode.service.transaction.entity.Entry" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO entry (
-            transaction_id, account_id, debit, credit, account_type, created_at
+            transaction_id, account_id, debit, credit, account_type, is_deleted, created_at, updated_at
         ) VALUES (
-            #{transactionId}, #{accountId}, #{debit}, #{credit}, #{accountType}, #{createdAt}
+            #{transactionId}, #{accountId}, COALESCE(#{debit}, 0), COALESCE(#{credit}, 0), #{accountType}, #{isDeleted}, #{createdAt}, #{createdAt}
         )
     </insert>
 
     <!-- 批量插入分录 -->
     <insert id="batchInsert" parameterType="java.util.List">
         INSERT INTO entry (
-            transaction_id, account_id, debit, credit, account_type, created_at
+            transaction_id, account_id, debit, credit, account_type, is_deleted, created_at, updated_at
         ) VALUES
-        <foreach collection="entries" item="entry" separator=",">
-            (#{entry.transactionId}, #{entry.accountId}, #{entry.debit}, #{entry.credit}, #{entry.accountType}, #{entry.createdAt})
+        <foreach collection="list" item="entry" separator=",">
+            (#{entry.transactionId}, #{entry.accountId}, COALESCE(#{entry.debit}, 0), COALESCE(#{entry.credit}, 0), #{entry.accountType}, #{entry.isDeleted}, #{entry.createdAt}, #{entry.createdAt})
         </foreach>
     </insert>
+
+    <!-- 根据ID查询分录 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM entry
+        WHERE id = #{id} AND is_deleted = 0
+    </select>
 
     <!-- 根据交易ID查询分录列表 -->
     <select id="selectByTransactionId" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM entry
-        WHERE transaction_id = #{transactionId}
+        WHERE transaction_id = #{transactionId} AND is_deleted = 0
+        ORDER BY id ASC
+    </select>
+
+    <!-- 根据ID删除分录 -->
+    <delete id="deleteById">
+        DELETE FROM entry
+        WHERE id = #{id}
+    </delete>
+
+    <!-- 根据账户ID查询分录列表 -->
+    <select id="selectByAccountId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM entry
+        WHERE account_id = #{accountId} AND is_deleted = 0
         ORDER BY id ASC
     </select>
 
@@ -49,11 +71,18 @@
         WHERE transaction_id = #{transactionId}
     </delete>
 
+    <!-- 软删除分录 -->
+    <update id="softDeleteByTransactionId">
+        UPDATE entry
+        SET is_deleted = 1
+        WHERE transaction_id = #{transactionId}
+    </update>
+
     <!-- 根据账户ID查询分录列表 -->
     <select id="selectByAccountId" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM entry
-        WHERE account_id = #{accountId}
+        WHERE account_id = #{accountId} AND is_deleted = 0
         ORDER BY created_at DESC
         LIMIT #{limit} OFFSET #{offset}
     </select>
@@ -64,6 +93,7 @@
         FROM entry e
         INNER JOIN `transaction` t ON t.id = e.transaction_id AND t.is_deleted = 0
         WHERE e.account_id = #{accountId}
+        AND e.is_deleted = 0
     </select>
 
     <!-- 计算账户的贷方总额 -->
@@ -72,6 +102,7 @@
         FROM entry e
         INNER JOIN `transaction` t ON t.id = e.transaction_id AND t.is_deleted = 0
         WHERE e.account_id = #{accountId}
+        AND e.is_deleted = 0
     </select>
 
     <!-- 计算交易的借方总额 -->
@@ -79,6 +110,7 @@
         SELECT COALESCE(SUM(debit), 0)
         FROM entry
         WHERE transaction_id = #{transactionId}
+        AND is_deleted = 0
     </select>
 
     <!-- 计算交易的贷方总额 -->
@@ -86,6 +118,7 @@
         SELECT COALESCE(SUM(credit), 0)
         FROM entry
         WHERE transaction_id = #{transactionId}
+        AND is_deleted = 0
     </select>
 
     <!-- 计算某分类在指定日期范围内的借方总额（支出） -->
@@ -95,6 +128,7 @@
         INNER JOIN `transaction` t ON t.id = e.transaction_id AND t.is_deleted = 0
         WHERE e.account_id = #{categoryId}
           AND e.account_type = 'category'
+          AND e.is_deleted = 0
           AND t.date BETWEEN #{startDate} AND #{endDate}
     </select>
 
@@ -105,6 +139,7 @@
         INNER JOIN `transaction` t ON t.id = e.transaction_id AND t.is_deleted = 0
         WHERE e.account_id = #{categoryId}
           AND e.account_type = 'category'
+          AND e.is_deleted = 0
           AND t.date BETWEEN #{startDate} AND #{endDate}
     </select>
 

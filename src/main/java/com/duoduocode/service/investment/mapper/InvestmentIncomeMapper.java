@@ -61,7 +61,7 @@ public interface InvestmentIncomeMapper {
      */
     BigDecimal calculateIncomeByType(
             @Param("accountId") Long accountId,
-            @Param("incomeType") String incomeType);
+            @Param("type") String type);
 
     /**
      * 删除收益记录

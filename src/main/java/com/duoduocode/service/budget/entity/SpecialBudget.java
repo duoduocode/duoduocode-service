@@ -56,6 +56,11 @@ public class SpecialBudget {
      */
     private LocalDateTime createdAt;
 
+    /**
+     * 完成时间
+     */
+    private LocalDateTime completedAt;
+
     // Getters and Setters
 
     public Long getId() {
@@ -136,5 +141,13 @@ public class SpecialBudget {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getCompletedAt() {
+        return completedAt;
+    }
+
+    public void setCompletedAt(LocalDateTime completedAt) {
+        this.completedAt = completedAt;
     }
 }

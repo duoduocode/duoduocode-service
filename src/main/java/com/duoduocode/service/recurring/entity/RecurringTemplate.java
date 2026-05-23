@@ -26,14 +26,14 @@ public class RecurringTemplate {
     private String name;
 
     /**
-     * 交易类型：expense-支出, income-收入, transfer-转账
-     */
-    private String type;
-
-    /**
      * 交易金额
      */
     private BigDecimal amount;
+
+    /**
+     * 类型：expense-支出, income-收入
+     */
+    private String type;
 
     /**
      * 分类ID
@@ -46,32 +46,32 @@ public class RecurringTemplate {
     private Long accountId;
 
     /**
-     * 目标账户ID（转账时使用）
+     * 目标账户ID
      */
     private Long toAccountId;
 
     /**
-     * 交易描述
+     * 描述
      */
     private String description;
 
     /**
-     * 频率：daily-每日, weekly-每周, monthly-每月, yearly-每年
+     * 频率：daily-每天, weekly-每周, monthly-每月, yearly-每年
      */
     private String frequency;
 
     /**
-     * 星期几（1-7，weekly时使用）
+     * 周几（1-7，weekly专用）
      */
     private Integer dayOfWeek;
 
     /**
-     * 每月几号（1-31，monthly时使用）
+     * 每月几号（1-31，monthly专用）
      */
     private Integer dayOfMonth;
 
     /**
-     * 每年几月（1-12，yearly时使用）
+     * 每年几月（1-12，yearly专用）
      */
     private Integer monthOfYear;
 
@@ -86,12 +86,12 @@ public class RecurringTemplate {
     private LocalDate endDate;
 
     /**
-     * 最大执行次数
+     * 最大执行次数（可选）
      */
     private Integer maxCount;
 
     /**
-     * 已执行次数
+     * 执行次数
      */
     private Integer executedCount;
 
@@ -106,7 +106,12 @@ public class RecurringTemplate {
     private LocalDateTime lastTriggeredAt;
 
     /**
-     * 状态：active-活跃, paused-暂停, completed-已完成
+     * 软删除标记
+     */
+    private Integer isDeleted;
+
+    /**
+     * 状态：active-激活, paused-暂停
      */
     private String status;
 
@@ -114,6 +119,11 @@ public class RecurringTemplate {
      * 创建时间
      */
     private LocalDateTime createdAt;
+
+    /**
+     * 更新时间
+     */
+    private LocalDateTime updatedAt;
 
     // Getters and Setters
 
@@ -141,20 +151,20 @@ public class RecurringTemplate {
         this.name = name;
     }
 
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
     public BigDecimal getAmount() {
         return amount;
     }
 
     public void setAmount(BigDecimal amount) {
         this.amount = amount;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
     }
 
     public Long getCategoryId() {
@@ -269,6 +279,14 @@ public class RecurringTemplate {
         this.lastTriggeredAt = lastTriggeredAt;
     }
 
+    public Integer getIsDeleted() {
+        return isDeleted;
+    }
+
+    public void setIsDeleted(Integer isDeleted) {
+        this.isDeleted = isDeleted;
+    }
+
     public String getStatus() {
         return status;
     }
@@ -283,5 +301,13 @@ public class RecurringTemplate {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }

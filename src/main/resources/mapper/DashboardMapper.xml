@@ -2,32 +2,21 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.duoduocode.service.dashboard.mapper.DashboardMapper">
 
-    <!-- 获取上月净资产 -->
+    <!-- 获取上月净资产：初始余额 + 截止 startDate 前的累计流水净额 -->
     <select id="getLastMonthNetWorth" resultType="java.math.BigDecimal">
         SELECT
-            COALESCE(SUM(
-                CASE
-                    WHEN a.type = 'asset' THEN COALESCE(a.initial_balance, 0)
-                    WHEN a.type = 'liability' THEN COALESCE(a.initial_balance, 0)
-                    WHEN a.type = 'investment' THEN COALESCE(a.initial_balance, 0)
-                    ELSE 0
-                END
-            ), 0) +
+            COALESCE(SUM(a.initial_balance), 0) +
             COALESCE((
-                SELECT SUM(
-                    CASE
-                        WHEN a2.type = 'asset' THEN COALESCE(SUM(e.debit) - SUM(e.credit), 0)
-                        WHEN a2.type = 'liability' THEN COALESCE(SUM(e.debit) - SUM(e.credit), 0)
-                        WHEN a2.type = 'investment' THEN COALESCE(SUM(e.debit) - SUM(e.credit), 0)
-                        ELSE 0
-                    END
-                )
-                FROM accounts a2
-                LEFT JOIN entries e ON e.account_id = a2.id AND e.account_type = 'account'
-                LEFT JOIN transactions t ON t.id = e.transaction_id AND t.is_deleted = 0 AND t.date &lt; #{startDate}
-                WHERE a2.user_id = #{userId} AND a2.is_deleted = 0 AND a2.include_in_net_worth = 1
+                SELECT SUM(COALESCE(e.debit, 0) - COALESCE(e.credit, 0))
+                FROM entry e
+                INNER JOIN account a2 ON a2.id = e.account_id AND e.account_type = 'account'
+                INNER JOIN transaction t ON t.id = e.transaction_id AND t.is_deleted = 0
+                WHERE a2.user_id = #{userId}
+                  AND a2.is_deleted = 0
+                  AND a2.include_in_net_worth = 1
+                  AND t.date &lt; #{startDate}
             ), 0) AS last_month_net_worth
-        FROM accounts a
+        FROM account a
         WHERE a.user_id = #{userId} AND a.is_deleted = 0 AND a.include_in_net_worth = 1
     </select>
 
@@ -42,9 +31,9 @@
             ), 0) AS totalExpense,
             COUNT(DISTINCT CASE WHEN c.type = 'income' THEN t.id END) AS incomeCount,
             COUNT(DISTINCT CASE WHEN c.type = 'expense' THEN t.id END) AS expenseCount
-        FROM transactions t
-        INNER JOIN entries e ON e.transaction_id = t.id AND e.account_type = 'category'
-        INNER JOIN categories c ON c.id = e.account_id
+        FROM transaction t
+        INNER JOIN entry e ON e.transaction_id = t.id AND e.account_type = 'category'
+        INNER JOIN category c ON c.id = e.account_id
         WHERE t.user_id = #{userId}
           AND t.is_deleted = 0
           AND t.date >= #{startDate}
@@ -54,8 +43,8 @@
     <!-- 获取分类月度支出 -->
     <select id="getCategoryExpense" resultType="java.math.BigDecimal">
         SELECT COALESCE(SUM(e.debit), 0) AS total_expense
-        FROM transactions t
-        INNER JOIN entries e ON e.transaction_id = t.id AND e.account_type = 'category' AND e.account_id = #{categoryId}
+        FROM transaction t
+        INNER JOIN entry e ON e.transaction_id = t.id AND e.account_type = 'category' AND e.account_id = #{categoryId}
         WHERE t.user_id = #{userId}
           AND t.is_deleted = 0
           AND t.date >= #{startDate}
@@ -70,9 +59,9 @@
             c.icon AS categoryIcon,
             COALESCE(SUM(e.debit), 0) AS totalExpense,
             COUNT(t.id) AS txCount
-        FROM transactions t
-        INNER JOIN entries e ON e.transaction_id = t.id AND e.account_type = 'category'
-        INNER JOIN categories c ON c.id = e.account_id
+        FROM transaction t
+        INNER JOIN entry e ON e.transaction_id = t.id AND e.account_type = 'category'
+        INNER JOIN category c ON c.id = e.account_id
         WHERE t.user_id = #{userId}
           AND t.is_deleted = 0
           AND c.is_deleted = 0
@@ -87,9 +76,9 @@
     <!-- 获取指定日期范围内的支出 -->
     <select id="getExpenseByDateRange" resultType="java.math.BigDecimal">
         SELECT COALESCE(SUM(e.debit), 0) AS total_expense
-        FROM transactions t
-        INNER JOIN entries e ON e.transaction_id = t.id AND e.account_type = 'category'
-        INNER JOIN categories c ON c.id = e.account_id
+        FROM transaction t
+        INNER JOIN entry e ON e.transaction_id = t.id AND e.account_type = 'category'
+        INNER JOIN category c ON c.id = e.account_id
         WHERE t.user_id = #{userId}
           AND t.is_deleted = 0
           AND c.type = 'expense'
@@ -103,8 +92,8 @@
             c.name AS name,
             c.icon AS icon,
             c.type AS type
-        FROM entries e
-        INNER JOIN categories c ON c.id = e.account_id
+        FROM entry e
+        INNER JOIN category c ON c.id = e.account_id
         WHERE e.transaction_id = #{transactionId}
           AND e.account_type = 'category'
         LIMIT 1

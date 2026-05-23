@@ -1,11 +1,12 @@
 package com.duoduocode.service.transaction.entity;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * 分录实体�? * 对应 entry �? */
+ * 分录实体类
+ * 对应 entry 表
+ */
 public class Entry {
 
     /**
@@ -14,19 +15,14 @@ public class Entry {
     private Long id;
 
     /**
-     * 交易ID
+     * 关联交易ID
      */
     private Long transactionId;
 
     /**
-     * 账户ID
+     * 账户ID或分类ID
      */
     private Long accountId;
-
-    /**
-     * 分类ID
-     */
-    private Long categoryId;
 
     /**
      * 借方金额
@@ -39,14 +35,14 @@ public class Entry {
     private BigDecimal credit;
 
     /**
-     * 交易日期
-     */
-    private LocalDate entryDate;
-
-    /**
-     * 账户类型
+     * 账户类型：category-分类, account-账户
      */
     private String accountType;
+
+    /**
+     * 软删除标记
+     */
+    private Integer isDeleted;
 
     /**
      * 创建时间
@@ -79,14 +75,6 @@ public class Entry {
         this.accountId = accountId;
     }
 
-    public Long getCategoryId() {
-        return categoryId;
-    }
-
-    public void setCategoryId(Long categoryId) {
-        this.categoryId = categoryId;
-    }
-
     public BigDecimal getDebit() {
         return debit;
     }
@@ -103,20 +91,20 @@ public class Entry {
         this.credit = credit;
     }
 
-    public LocalDate getEntryDate() {
-        return entryDate;
-    }
-
-    public void setEntryDate(LocalDate entryDate) {
-        this.entryDate = entryDate;
-    }
-
     public String getAccountType() {
         return accountType;
     }
 
     public void setAccountType(String accountType) {
         this.accountType = accountType;
+    }
+
+    public Integer getIsDeleted() {
+        return isDeleted;
+    }
+
+    public void setIsDeleted(Integer isDeleted) {
+        this.isDeleted = isDeleted;
     }
 
     public LocalDateTime getCreatedAt() {

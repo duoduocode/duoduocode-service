@@ -6,8 +6,8 @@
         <id column="id" property="id"/>
         <result column="user_id" property="userId"/>
         <result column="name" property="name"/>
-        <result column="type" property="type"/>
         <result column="amount" property="amount"/>
+        <result column="type" property="type"/>
         <result column="category_id" property="categoryId"/>
         <result column="account_id" property="accountId"/>
         <result column="to_account_id" property="toAccountId"/>
@@ -22,37 +22,39 @@
         <result column="executed_count" property="executedCount"/>
         <result column="next_trigger_date" property="nextTriggerDate"/>
         <result column="last_triggered_at" property="lastTriggeredAt"/>
+        <result column="is_deleted" property="isDeleted"/>
         <result column="status" property="status"/>
         <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, user_id, name, type, amount, category_id, account_id, to_account_id,
+        id, user_id, name, amount, type, category_id, account_id, to_account_id,
         description, frequency, day_of_week, day_of_month, month_of_year,
         start_date, end_date, max_count, executed_count, next_trigger_date,
-        last_triggered_at, status, created_at
+        last_triggered_at, is_deleted, status, created_at, updated_at
     </sql>
 
-    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+    <insert id="insert" parameterType="com.duoduocode.service.recurring.entity.RecurringTemplate" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO recurring_template (
-            user_id, name, type, amount, category_id, account_id, to_account_id,
+            user_id, name, amount, type, category_id, account_id, to_account_id,
             description, frequency, day_of_week, day_of_month, month_of_year,
             start_date, end_date, max_count, executed_count, next_trigger_date,
-            last_triggered_at, status, created_at
+            last_triggered_at, is_deleted, status, created_at, updated_at
         ) VALUES (
-            #{userId}, #{name}, #{type}, #{amount}, #{categoryId}, #{accountId}, #{toAccountId},
+            #{userId}, #{name}, #{amount}, #{type}, #{categoryId}, #{accountId}, #{toAccountId},
             #{description}, #{frequency}, #{dayOfWeek}, #{dayOfMonth}, #{monthOfYear},
             #{startDate}, #{endDate}, #{maxCount}, #{executedCount}, #{nextTriggerDate},
-            #{lastTriggeredAt}, #{status}, #{createdAt}
+            #{lastTriggeredAt}, 0, #{status}, NOW(), NOW()
         )
     </insert>
 
-    <update id="updateById">
+    <update id="updateById" parameterType="com.duoduocode.service.recurring.entity.RecurringTemplate">
         UPDATE recurring_template
         <set>
             <if test="name != null">name = #{name},</if>
-            <if test="type != null">type = #{type},</if>
             <if test="amount != null">amount = #{amount},</if>
+            <if test="type != null">type = #{type},</if>
             <if test="categoryId != null">category_id = #{categoryId},</if>
             <if test="accountId != null">account_id = #{accountId},</if>
             <if test="toAccountId != null">to_account_id = #{toAccountId},</if>
@@ -67,7 +69,8 @@
             <if test="executedCount != null">executed_count = #{executedCount},</if>
             <if test="nextTriggerDate != null">next_trigger_date = #{nextTriggerDate},</if>
             <if test="lastTriggeredAt != null">last_triggered_at = #{lastTriggeredAt},</if>
-            <if test="status != null">status = #{status}</if>
+            <if test="status != null">status = #{status},</if>
+            updated_at = NOW()
         </set>
         WHERE id = #{id}
     </update>
@@ -80,12 +83,14 @@
         SELECT <include refid="Base_Column_List"/>
         FROM recurring_template
         WHERE id = #{id}
+          AND is_deleted = 0
     </select>
 
     <select id="selectByUserId" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM recurring_template
         WHERE user_id = #{userId}
+          AND is_deleted = 0
         ORDER BY created_at DESC
     </select>
 
@@ -93,16 +98,18 @@
         SELECT <include refid="Base_Column_List"/>
         FROM recurring_template
         WHERE user_id = #{userId}
-        AND status = 'active'
-        AND next_trigger_date &lt;= #{date}
-        AND (end_date IS NULL OR end_date &gt;= #{date})
-        AND (max_count IS NULL OR executed_count &lt; max_count)
+          AND is_deleted = 0
+          AND status = 'active'
+          AND next_trigger_date &lt;= #{date}
+          AND (end_date IS NULL OR end_date &gt;= #{date})
+          AND (max_count IS NULL OR executed_count &lt; max_count)
         ORDER BY next_trigger_date ASC
     </select>
 
     <update id="updateStatus">
         UPDATE recurring_template
-        SET status = #{status}
+        SET status = #{status},
+            updated_at = NOW()
         WHERE id = #{id}
     </update>
 
@@ -110,7 +117,8 @@
         UPDATE recurring_template
         SET executed_count = #{executedCount},
             next_trigger_date = #{nextTriggerDate},
-            last_triggered_at = #{lastTriggeredAt}
+            last_triggered_at = #{lastTriggeredAt},
+            updated_at = NOW()
         WHERE id = #{id}
     </update>
 
