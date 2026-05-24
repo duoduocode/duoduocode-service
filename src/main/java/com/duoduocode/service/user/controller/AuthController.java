@@ -1,5 +1,6 @@
 package com.duoduocode.service.user.controller;
 
+import com.duoduocode.service.category.init.CategoryDataInitializer;
 import com.duoduocode.service.common.Result;
 import com.duoduocode.service.security.JwtUtils;
 import com.duoduocode.service.user.service.UserService;
@@ -26,6 +27,7 @@ public class AuthController {
 
     private final UserService userService;
     private final JwtUtils jwtUtils;
+    private final CategoryDataInitializer categoryDataInitializer;
 
     /**
      * 微信登录
@@ -116,6 +118,8 @@ public class AuthController {
         Long userId = ((Number) userIdObj).longValue();
 
         String token = jwtUtils.generateToken(userId);
+
+        categoryDataInitializer.initForUser(userId);
 
         Map<String, Object> data = new HashMap<>();
         data.put("token", token);

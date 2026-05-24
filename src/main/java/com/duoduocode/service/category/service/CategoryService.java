@@ -175,9 +175,6 @@ public class CategoryService {
         category.setParentId(dto.getParentId());
         category.setIcon(dto.getIcon() != null ? dto.getIcon() : (dto.getParentId() == null ? "📁" : "📄"));
         category.setColor(dto.getColor() != null ? dto.getColor() : "#07C160");
-        category.setMonthlyBudget(dto.getMonthlyBudget());
-        category.setWeeklyBudget(dto.getWeeklyBudget());
-        category.setAlertThreshold(dto.getAlertThreshold());
         category.setSortOrder(dto.getSortOrder() != null ? dto.getSortOrder() : 0);
         category.setIsDeleted(false);
         category.setCreatedAt(LocalDateTime.now());
@@ -215,9 +212,6 @@ public class CategoryService {
         if (dto.getName() != null) category.setName(dto.getName().trim());
         if (dto.getIcon() != null) category.setIcon(dto.getIcon());
         if (dto.getColor() != null) category.setColor(dto.getColor());
-        if (dto.getMonthlyBudget() != null) category.setMonthlyBudget(dto.getMonthlyBudget());
-        if (dto.getWeeklyBudget() != null) category.setWeeklyBudget(dto.getWeeklyBudget());
-        if (dto.getAlertThreshold() != null) category.setAlertThreshold(dto.getAlertThreshold());
         if (dto.getSortOrder() != null) category.setSortOrder(dto.getSortOrder());
 
         categoryMapper.updateById(category);

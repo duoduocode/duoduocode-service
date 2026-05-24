@@ -1,5 +1,6 @@
 package com.duoduocode.service.user.service;
 
+import com.duoduocode.service.category.init.CategoryDataInitializer;
 import com.duoduocode.service.common.BusinessException;
 import com.duoduocode.service.common.ResultCode;
 import com.duoduocode.service.entity.User;
@@ -29,6 +30,7 @@ public class UserService {
 
     private final UserMapper userMapper;
     private final ObjectMapper objectMapper;
+    private final CategoryDataInitializer categoryDataInitializer;
 
     @Value("${wechat.mini.appid}")
     private String appid;
@@ -75,6 +77,7 @@ public class UserService {
             userMapper.insert(user);
             isNewUser = true;
             log.info("新用户注册成功, userId={}, openid={}", user.getId(), openid);
+            categoryDataInitializer.initForUser(user.getId());
         }
 
         // 4. 更新最后登录时间

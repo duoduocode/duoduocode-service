@@ -1,6 +1,5 @@
 package com.duoduocode.service.category.dto;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -42,21 +41,6 @@ public class CategoryVO {
      * 颜色
      */
     private String color;
-
-    /**
-     * 月度预算
-     */
-    private BigDecimal monthlyBudget;
-
-    /**
-     * 周预算
-     */
-    private BigDecimal weeklyBudget;
-
-    /**
-     * 预警阈值
-     */
-    private BigDecimal alertThreshold;
 
     /**
      * 排序权重
@@ -124,30 +108,6 @@ public class CategoryVO {
 
     public void setColor(String color) {
         this.color = color;
-    }
-
-    public BigDecimal getMonthlyBudget() {
-        return monthlyBudget;
-    }
-
-    public void setMonthlyBudget(BigDecimal monthlyBudget) {
-        this.monthlyBudget = monthlyBudget;
-    }
-
-    public BigDecimal getWeeklyBudget() {
-        return weeklyBudget;
-    }
-
-    public void setWeeklyBudget(BigDecimal weeklyBudget) {
-        this.weeklyBudget = weeklyBudget;
-    }
-
-    public BigDecimal getAlertThreshold() {
-        return alertThreshold;
-    }
-
-    public void setAlertThreshold(BigDecimal alertThreshold) {
-        this.alertThreshold = alertThreshold;
     }
 
     public Integer getSortOrder() {

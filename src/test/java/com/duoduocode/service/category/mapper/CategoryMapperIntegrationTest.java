@@ -48,8 +48,6 @@ class CategoryMapperIntegrationTest {
         category.setName(name);
         category.setType(type);
         category.setIcon("🍔");
-        category.setMonthlyBudget(new BigDecimal("1000.00"));
-        category.setAlertThreshold(new BigDecimal("0.8"));
         category.setSortOrder(0);
         category.setIsDeleted(false);
         category.setCreatedAt(LocalDateTime.now());
@@ -70,7 +68,6 @@ class CategoryMapperIntegrationTest {
     void insert_shouldSetAllFields() {
         Category category = createCategory("完整字段_" + System.currentTimeMillis(), "expense");
         category.setParentId(null);
-        category.setWeeklyBudget(new BigDecimal("200.00"));
 
         categoryMapper.insert(category);
 
@@ -79,8 +76,6 @@ class CategoryMapperIntegrationTest {
         assertEquals(testUserId, saved.getUserId());
         assertEquals(category.getName(), saved.getName());
         assertEquals("expense", saved.getType());
-        assertEquals(0, new BigDecimal("1000.00").compareTo(saved.getMonthlyBudget()));
-        assertEquals(0, new BigDecimal("200.00").compareTo(saved.getWeeklyBudget()));
     }
 
     @Test
@@ -89,15 +84,12 @@ class CategoryMapperIntegrationTest {
         categoryMapper.insert(category);
 
         category.setName("更新后");
-        category.setMonthlyBudget(new BigDecimal("2000.00"));
 
         int result = categoryMapper.updateById(category);
 
         assertEquals(1, result);
-
         Category updated = categoryMapper.selectById(category.getId());
         assertEquals("更新后", updated.getName());
-        assertEquals(0, new BigDecimal("2000.00").compareTo(updated.getMonthlyBudget()));
     }
 
     @Test
@@ -368,18 +360,14 @@ class CategoryMapperIntegrationTest {
     @Test
     void multipleCategories_shouldBeIndependent() {
         Category category1 = createCategory("独立分类1_" + System.currentTimeMillis(), "expense");
-        category1.setMonthlyBudget(new BigDecimal("1000.00"));
         categoryMapper.insert(category1);
 
         Category category2 = createCategory("独立分类2_" + System.currentTimeMillis(), "income");
-        category2.setMonthlyBudget(new BigDecimal("2000.00"));
         categoryMapper.insert(category2);
 
         Category result1 = categoryMapper.selectById(category1.getId());
         Category result2 = categoryMapper.selectById(category2.getId());
 
         assertNotEquals(result1.getName(), result2.getName());
-        assertEquals(0, new BigDecimal("1000.00").compareTo(result1.getMonthlyBudget()));
-        assertEquals(0, new BigDecimal("2000.00").compareTo(result2.getMonthlyBudget()));
     }
 }

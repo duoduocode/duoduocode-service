@@ -33,16 +33,18 @@ class TransactionControllerApiTest {
     private static Long testTargetAccountId;
     private static Long createdTransactionId;
 
+    private static final String UNIQUE_SUFFIX = "_" + System.currentTimeMillis();
+
     @BeforeAll
     static void setUp() {
         authToken = devLogin(1L);
 
-        testAccountId = createTestAccount("测试银行账户", "asset", new BigDecimal("10000.00"));
-        testTargetAccountId = createTestAccount("测试现金账户", "asset", new BigDecimal("5000.00"));
-        createTestAccount("测试信用卡", "liability", new BigDecimal("0.00"));
+        testAccountId = createTestAccount("测试银行账户" + UNIQUE_SUFFIX, "asset", new BigDecimal("10000.00"));
+        testTargetAccountId = createTestAccount("测试现金账户" + UNIQUE_SUFFIX, "asset", new BigDecimal("5000.00"));
+        createTestAccount("测试信用卡" + UNIQUE_SUFFIX, "liability", new BigDecimal("0.00"));
 
-        testExpenseCategoryId = createTestCategory("餐饮", "expense", "🍔");
-        testIncomeCategoryId = createTestCategory("工资", "income", "💰");
+        testExpenseCategoryId = createTestCategory("餐饮" + UNIQUE_SUFFIX, "expense", "🍔");
+        testIncomeCategoryId = createTestCategory("工资" + UNIQUE_SUFFIX, "income", "💰");
     }
 
     // ==================== 认证辅助方法 ====================

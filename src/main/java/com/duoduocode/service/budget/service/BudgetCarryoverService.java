@@ -2,7 +2,9 @@ package com.duoduocode.service.budget.service;
 
 import com.duoduocode.service.budget.dto.CarryoverDTO;
 import com.duoduocode.service.budget.entity.BudgetCarryover;
+import com.duoduocode.service.budget.entity.DailyBudget;
 import com.duoduocode.service.budget.mapper.BudgetCarryoverMapper;
+import com.duoduocode.service.budget.mapper.DailyBudgetMapper;
 import com.duoduocode.service.category.entity.Category;
 import com.duoduocode.service.category.mapper.CategoryMapper;
 import com.duoduocode.service.common.BusinessException;
@@ -21,8 +23,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 预算结转服务类 */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -31,6 +31,7 @@ public class BudgetCarryoverService {
     private final BudgetCarryoverMapper budgetCarryoverMapper;
     private final CategoryMapper categoryMapper;
     private final EntryMapper entryMapper;
+    private final DailyBudgetMapper dailyBudgetMapper;
 
     /**
      * 执行预算结转
@@ -142,8 +143,9 @@ public class BudgetCarryoverService {
             throw new BusinessException(ResultCode.PERMISSION_DENIED, "无权操作此分类");
         }
 
-        // 获取分类的月度预算
-        BigDecimal monthlyBudget = category.getMonthlyBudget();
+        // 从budget_daily表获取该分类该月的月度预算
+        DailyBudget dailyBudget = dailyBudgetMapper.selectByUserIdAndCategoryIdAndMonth(userId, categoryId, fromMonth);
+        BigDecimal monthlyBudget = dailyBudget != null ? dailyBudget.getMonthlyBudget() : null;
         if (monthlyBudget == null || monthlyBudget.compareTo(BigDecimal.ZERO) <= 0) {
             return BigDecimal.ZERO;
         }
@@ -189,13 +191,15 @@ public class BudgetCarryoverService {
                     category.getId(), month);
 
             // 计算可结转金额
+            DailyBudget dailyBudget = dailyBudgetMapper.selectByUserIdAndCategoryIdAndMonth(userId, category.getId(), month);
+            BigDecimal monthlyBudget = dailyBudget != null ? dailyBudget.getMonthlyBudget() : null;
             BigDecimal availableAmount = calculateCarryoverAmount(userId, category.getId(), month);
 
             Map<String, Object> item = new HashMap<>();
             item.put("categoryId", category.getId());
             item.put("categoryName", category.getName());
             item.put("categoryIcon", category.getIcon());
-            item.put("monthlyBudget", category.getMonthlyBudget());
+            item.put("monthlyBudget", monthlyBudget);
             item.put("availableAmount", availableAmount);
 
             if (carryover != null) {

@@ -88,7 +88,6 @@ class ReportMapperIntegrationTest {
         category.setName("测试分类_" + System.currentTimeMillis());
         category.setType("expense");
         category.setIcon("🍔");
-        category.setAlertThreshold(new BigDecimal("0.8"));
         category.setSortOrder(0);
         category.setIsDeleted(false);
         category.setCreatedAt(LocalDateTime.now());

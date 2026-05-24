@@ -55,7 +55,6 @@ class CategoryServiceIntegrationTest {
         CategoryDTO dto = new CategoryDTO();
         dto.setName(name);
         dto.setType(type);
-        dto.setAlertThreshold(new BigDecimal("0.8"));
         dto.setSortOrder(0);
         return dto;
     }
@@ -144,8 +143,6 @@ class CategoryServiceIntegrationTest {
     @Test
     void createCategory_shouldSuccess() {
         CategoryDTO dto = createDto("餐饮_" + System.currentTimeMillis(), "expense");
-        dto.setMonthlyBudget(new BigDecimal("1000.00"));
-        dto.setAlertThreshold(new BigDecimal("0.8"));
         dto.setSortOrder(0);
 
         Long categoryId = categoryService.createCategory(testUserId, dto);

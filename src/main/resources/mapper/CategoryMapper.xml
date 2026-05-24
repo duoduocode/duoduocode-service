@@ -9,26 +9,22 @@
         <result column="type" property="type"/>
         <result column="parent_id" property="parentId"/>
         <result column="icon" property="icon"/>
-        <result column="monthly_budget" property="monthlyBudget"/>
-        <result column="weekly_budget" property="weeklyBudget"/>
-        <result column="alert_threshold" property="alertThreshold"/>
         <result column="sort_order" property="sortOrder"/>
         <result column="is_deleted" property="isDeleted"/>
         <result column="created_at" property="createdAt"/>
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, user_id, name, type, parent_id, icon, monthly_budget, weekly_budget,
-        alert_threshold, sort_order, is_deleted, created_at
+        id, user_id, name, type, parent_id, icon, sort_order, is_deleted, created_at
     </sql>
 
     <insert id="insert" parameterType="com.duoduocode.service.category.entity.Category" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO category (
-            user_id, name, type, parent_id, icon, monthly_budget, weekly_budget,
-            alert_threshold, sort_order, is_deleted, created_at
+            user_id, name, type, parent_id, icon,
+            sort_order, is_deleted, created_at
         ) VALUES (
-            #{userId}, #{name}, #{type}, #{parentId}, #{icon}, #{monthlyBudget}, #{weeklyBudget},
-            #{alertThreshold}, #{sortOrder}, #{isDeleted}, #{createdAt}
+            #{userId}, #{name}, #{type}, #{parentId}, #{icon},
+            #{sortOrder}, #{isDeleted}, #{createdAt}
         )
     </insert>
 
@@ -37,9 +33,6 @@
         <set>
             <if test="name != null">name = #{name},</if>
             <if test="icon != null">icon = #{icon},</if>
-            <if test="monthlyBudget != null">monthly_budget = #{monthlyBudget},</if>
-            <if test="weeklyBudget != null">weekly_budget = #{weeklyBudget},</if>
-            <if test="alertThreshold != null">alert_threshold = #{alertThreshold},</if>
             <if test="sortOrder != null">sort_order = #{sortOrder},</if>
             <if test="parentId != null">parent_id = #{parentId},</if>
         </set>
@@ -116,8 +109,8 @@
     </select>
 
     <select id="selectRecentUsed" resultMap="BaseResultMap">
-        SELECT c.id, c.user_id, c.name, c.type, c.parent_id, c.icon, c.monthly_budget, c.weekly_budget,
-               c.alert_threshold, c.sort_order, c.is_deleted, c.created_at, MAX(t.created_at) as last_used
+        SELECT c.id, c.user_id, c.name, c.type, c.parent_id, c.icon,
+               c.sort_order, c.is_deleted, c.created_at, MAX(t.created_at) as last_used
         FROM category c
         INNER JOIN entry e ON e.account_id = c.id AND e.account_type = 'category'
         INNER JOIN `transaction` t ON t.id = e.transaction_id AND t.is_deleted = 0
@@ -126,21 +119,21 @@
             AND c.type = #{type}
         </if>
         AND c.is_deleted = 0
-        GROUP BY c.id, c.user_id, c.name, c.type, c.parent_id, c.icon, c.monthly_budget, c.weekly_budget,
-                 c.alert_threshold, c.sort_order, c.is_deleted, c.created_at
+        GROUP BY c.id, c.user_id, c.name, c.type, c.parent_id, c.icon,
+                 c.sort_order, c.is_deleted, c.created_at
         ORDER BY last_used DESC
         LIMIT #{limit}
     </select>
 
     <select id="selectQuickChildren" resultMap="BaseResultMap">
-        SELECT c.id, c.user_id, c.name, c.type, c.parent_id, c.icon, c.monthly_budget, c.weekly_budget,
-               c.alert_threshold, c.sort_order, c.is_deleted, c.created_at, MAX(t.created_at) as last_used
+        SELECT c.id, c.user_id, c.name, c.type, c.parent_id, c.icon,
+               c.sort_order, c.is_deleted, c.created_at, MAX(t.created_at) as last_used
         FROM category c
         INNER JOIN entry e ON e.account_id = c.id AND e.account_type = 'category'
         INNER JOIN `transaction` t ON t.id = e.transaction_id AND t.is_deleted = 0
         WHERE c.parent_id = #{parentId} AND c.is_deleted = 0
-        GROUP BY c.id, c.user_id, c.name, c.type, c.parent_id, c.icon, c.monthly_budget, c.weekly_budget,
-                 c.alert_threshold, c.sort_order, c.is_deleted, c.created_at
+        GROUP BY c.id, c.user_id, c.name, c.type, c.parent_id, c.icon,
+                 c.sort_order, c.is_deleted, c.created_at
         ORDER BY last_used DESC
         LIMIT #{limit}
     </select>

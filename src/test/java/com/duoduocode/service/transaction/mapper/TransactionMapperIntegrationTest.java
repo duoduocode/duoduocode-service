@@ -83,8 +83,6 @@ class TransactionMapperIntegrationTest {
         category.setName("测试分类_" + System.currentTimeMillis());
         category.setType("expense");
         category.setIcon("🍔");
-        category.setMonthlyBudget(new BigDecimal("1000.00"));
-        category.setAlertThreshold(new BigDecimal("0.8"));
         category.setSortOrder(0);
         category.setIsDeleted(false);
         category.setCreatedAt(LocalDateTime.now());
@@ -456,7 +454,6 @@ class TransactionMapperIntegrationTest {
         newCategory.setName("新分类_" + System.currentTimeMillis());
         newCategory.setType("expense");
         newCategory.setIcon("🍕");
-        newCategory.setAlertThreshold(new BigDecimal("0.8"));
         newCategory.setSortOrder(1);
         newCategory.setIsDeleted(false);
         newCategory.setCreatedAt(LocalDateTime.now());

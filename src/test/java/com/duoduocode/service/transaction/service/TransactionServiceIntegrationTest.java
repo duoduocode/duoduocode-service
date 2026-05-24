@@ -88,8 +88,6 @@ class TransactionServiceIntegrationTest {
         category.setName("测试分类_" + System.currentTimeMillis());
         category.setType("expense");
         category.setIcon("🍔");
-        category.setMonthlyBudget(new BigDecimal("1000.00"));
-        category.setAlertThreshold(new BigDecimal("0.8"));
         category.setSortOrder(0);
         category.setIsDeleted(false);
         category.setCreatedAt(LocalDateTime.now());
@@ -683,7 +681,6 @@ class TransactionServiceIntegrationTest {
         liabilityCategory.setName("负债分类_" + System.currentTimeMillis());
         liabilityCategory.setType("expense");
         liabilityCategory.setIcon("💳");
-        liabilityCategory.setAlertThreshold(new BigDecimal("0.8"));
         liabilityCategory.setSortOrder(1);
         liabilityCategory.setIsDeleted(false);
         liabilityCategory.setCreatedAt(LocalDateTime.now());

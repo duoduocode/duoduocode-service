@@ -85,8 +85,6 @@ class EntryMapperIntegrationTest {
         category.setName("测试分类_" + System.currentTimeMillis());
         category.setType("expense");
         category.setIcon("🍔");
-        category.setMonthlyBudget(new BigDecimal("1000.00"));
-        category.setAlertThreshold(new BigDecimal("0.8"));
         category.setSortOrder(0);
         category.setIsDeleted(false);
         category.setCreatedAt(LocalDateTime.now());
