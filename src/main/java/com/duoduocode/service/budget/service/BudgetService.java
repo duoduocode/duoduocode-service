@@ -61,7 +61,7 @@ public class BudgetService {
         if (category == null) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND, "分类不存在");
         }
-        if (!category.getUserId().equals(userId)) {
+        if (category.getUserId() != null && !category.getUserId().equals(userId)) {
             throw new BusinessException(ResultCode.PERMISSION_DENIED, "无权操作此分类");
         }
 

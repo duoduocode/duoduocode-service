@@ -1,6 +1,7 @@
 package com.duoduocode.service.security;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
@@ -109,6 +110,27 @@ public class JwtUtils {
             return null;
         }
         return claims.get("userId", Long.class);
+    }
+
+    /**
+     * 解析 Token（允许过期）
+     * 用于刷新 Token 时提取用户信息
+     *
+     * @param token JWT Token
+     * @return Claims，解析失败返回 null
+     */
+    public Claims parseTokenIgnoreExpiration(String token) {
+        try {
+            return Jwts.parserBuilder()
+                    .setSigningKey(key)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+        } catch (ExpiredJwtException e) {
+            return e.getClaims();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /**

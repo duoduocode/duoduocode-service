@@ -37,8 +37,8 @@ jwt:
 # 微信小程序配置
 wechat:
   mini:
-    appid: 你的微信小程序AppID
-    secret: 你的微信小程序AppSecret
+    appid: ${WX_APPID:wxd28c90174393e686}
+    secret: ${WX_SECRET:aa3b347c9da0cd8c4136e8d8e8a425de}
 
 logging:
   level:

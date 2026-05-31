@@ -4,6 +4,8 @@ import com.duoduocode.service.entity.User;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.Map;
+
 /**
  * 用户 Mapper
  */
@@ -59,4 +61,12 @@ public interface UserMapper {
      * @return 影响行数
      */
     int updateNickname(@Param("id") Long id, @Param("nickname") String nickname);
+
+    /**
+     * 查询用户统计信息：记账天数、总笔数、净资产
+     *
+     * @param userId 用户ID
+     * @return {totalDays, totalCount, netAsset}
+     */
+    Map<String, Object> selectStats(@Param("userId") Long userId);
 }

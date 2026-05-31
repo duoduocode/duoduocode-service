@@ -89,4 +89,19 @@ public class UserController {
         userService.updateAvatarUrl(userId, avatarUrl);
         return Result.success("头像更新成功", null);
     }
+
+    /**
+     * 获取用户统计信息
+     * GET /v1/user/stats
+     *
+     * @return {totalDays, totalCount, netAsset}
+     */
+    @GetMapping("/stats")
+    @Operation(summary = "获取统计信息", description = "获取用户记账天数、总笔数、净资产")
+    public Result<Map<String, Object>> getStats() {
+        Long userId = SecurityContext.requireUserId();
+        log.debug("GET /v1/user/stats - userId={}", userId);
+        Map<String, Object> stats = userService.getStats(userId);
+        return Result.success(stats);
+    }
 }

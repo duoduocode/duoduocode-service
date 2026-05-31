@@ -48,19 +48,21 @@
     <select id="selectByUserIdAndType" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM category
-        WHERE user_id = #{userId}
+        WHERE (user_id IS NULL OR user_id = #{userId})
         <if test="type != null and type != ''">
             AND type = #{type}
         </if>
         AND is_deleted = 0
-        ORDER BY sort_order ASC, created_at ASC
+        AND id NOT IN (SELECT ref_id FROM user_data_hide WHERE user_id = #{userId} AND data_type = 'category')
+        ORDER BY user_id IS NOT NULL, sort_order ASC, created_at ASC
     </select>
 
     <select id="selectByUserId" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM category
-        WHERE user_id = #{userId} AND is_deleted = 0
-        ORDER BY type ASC, sort_order ASC, created_at ASC
+        WHERE (user_id IS NULL OR user_id = #{userId}) AND is_deleted = 0
+        AND id NOT IN (SELECT ref_id FROM user_data_hide WHERE user_id = #{userId} AND data_type = 'category')
+        ORDER BY type ASC, user_id IS NOT NULL, sort_order ASC, created_at ASC
     </select>
 
     <select id="selectByParentId" resultMap="BaseResultMap">
@@ -103,7 +105,8 @@
     <select id="searchByKeyword" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM category
-        WHERE user_id = #{userId} AND is_deleted = 0
+        WHERE (user_id IS NULL OR user_id = #{userId}) AND is_deleted = 0
+        AND id NOT IN (SELECT ref_id FROM user_data_hide WHERE user_id = #{userId} AND data_type = 'category')
         AND name LIKE CONCAT('%', #{keyword}, '%')
         ORDER BY sort_order ASC, created_at ASC
     </select>
@@ -114,11 +117,12 @@
         FROM category c
         INNER JOIN entry e ON e.account_id = c.id AND e.account_type = 'category'
         INNER JOIN `transaction` t ON t.id = e.transaction_id AND t.is_deleted = 0
-        WHERE c.user_id = #{userId}
+        WHERE (c.user_id IS NULL OR c.user_id = #{userId})
         <if test="type != null and type != ''">
             AND c.type = #{type}
         </if>
         AND c.is_deleted = 0
+        AND c.id NOT IN (SELECT ref_id FROM user_data_hide WHERE user_id = #{userId} AND data_type = 'category')
         GROUP BY c.id, c.user_id, c.name, c.type, c.parent_id, c.icon,
                  c.sort_order, c.is_deleted, c.created_at
         ORDER BY last_used DESC

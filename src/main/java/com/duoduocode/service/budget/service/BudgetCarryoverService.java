@@ -47,7 +47,7 @@ public class BudgetCarryoverService {
         if (category == null) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND, "分类不存在");
         }
-        if (!category.getUserId().equals(userId)) {
+        if (category.getUserId() != null && !category.getUserId().equals(userId)) {
             throw new BusinessException(ResultCode.PERMISSION_DENIED, "无权操作此分类");
         }
 
@@ -80,6 +80,7 @@ public class BudgetCarryoverService {
 
         // 创建结转记录
         BudgetCarryover carryover = new BudgetCarryover();
+        carryover.setUserId(userId);
         carryover.setCategoryId(dto.getCategoryId());
         carryover.setFromMonth(dto.getFromMonth());
         carryover.setToMonth(dto.getToMonth());
@@ -139,7 +140,7 @@ public class BudgetCarryoverService {
         if (category == null) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND, "分类不存在");
         }
-        if (!category.getUserId().equals(userId)) {
+        if (category.getUserId() != null && !category.getUserId().equals(userId)) {
             throw new BusinessException(ResultCode.PERMISSION_DENIED, "无权操作此分类");
         }
 

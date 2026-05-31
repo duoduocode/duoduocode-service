@@ -1,9 +1,11 @@
 package com.duoduocode.service.user.controller;
 
-import com.duoduocode.service.category.init.CategoryDataInitializer;
 import com.duoduocode.service.common.Result;
+import com.duoduocode.service.entity.User;
 import com.duoduocode.service.security.JwtUtils;
+import com.duoduocode.service.user.mapper.UserMapper;
 import com.duoduocode.service.user.service.UserService;
+import io.jsonwebtoken.Claims;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,7 +29,7 @@ public class AuthController {
 
     private final UserService userService;
     private final JwtUtils jwtUtils;
-    private final CategoryDataInitializer categoryDataInitializer;
+    private final UserMapper userMapper;
 
     /**
      * 微信登录
@@ -77,20 +79,23 @@ public class AuthController {
      * @return 新的 token
      */
     @PostMapping("/refresh-token")
-    @Operation(summary = "刷新Token", description = "使用旧Token换取新Token，延长登录有效期")
+    @Operation(summary = "刷新Token", description = "使用旧Token换取新Token（支持过期Token），延长登录有效期")
     public Result<Map<String, Object>> refreshToken(@Parameter(description = "Token请求") @RequestBody Map<String, String> body) {
         String oldToken = body.get("token");
         if (oldToken == null || oldToken.trim().isEmpty()) {
             return Result.fail("token不能为空");
         }
 
-        // 从旧 token 解析用户ID
-        Long userId = jwtUtils.getUserIdFromToken(oldToken);
+        Claims claims = jwtUtils.parseTokenIgnoreExpiration(oldToken);
+        if (claims == null) {
+            return Result.fail("无效的token");
+        }
+
+        Long userId = claims.get("userId", Long.class);
         if (userId == null) {
             return Result.fail("无效的token");
         }
 
-        // 签发新 token
         String newToken = jwtUtils.generateToken(userId);
 
         Map<String, Object> data = new HashMap<>();
@@ -117,9 +122,22 @@ public class AuthController {
 
         Long userId = ((Number) userIdObj).longValue();
 
-        String token = jwtUtils.generateToken(userId);
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            user = new User();
+            user.setOpenid("dev_openid_" + userId);
+            user.setNickname("DevUser" + userId);
+            user.setGender(0);
+            user.setStatus(1);
+            user.setIsDeleted(false);
+            user.setCreatedAt(java.time.LocalDateTime.now());
+            user.setUpdatedAt(java.time.LocalDateTime.now());
+            userMapper.insert(user);
+            userId = user.getId();
+            log.info("dev环境自动创建用户, userId={}", userId);
+        }
 
-        categoryDataInitializer.initForUser(userId);
+        String token = jwtUtils.generateToken(userId);
 
         Map<String, Object> data = new HashMap<>();
         data.put("token", token);

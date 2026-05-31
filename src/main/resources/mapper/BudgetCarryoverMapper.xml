@@ -4,6 +4,7 @@
 
     <resultMap id="BaseResultMap" type="com.duoduocode.service.budget.entity.BudgetCarryover">
         <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
         <result column="category_id" property="categoryId"/>
         <result column="from_month" property="fromMonth"/>
         <result column="to_month" property="toMonth"/>
@@ -12,15 +13,15 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, category_id, from_month, to_month, carryover_amount, created_at
+        id, user_id, category_id, from_month, to_month, carryover_amount, created_at
     </sql>
 
     <!-- 插入结转记录 -->
     <insert id="insert" parameterType="com.duoduocode.service.budget.entity.BudgetCarryover" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO budget_carryover (
-            category_id, from_month, to_month, carryover_amount, created_at
+            user_id, category_id, from_month, to_month, carryover_amount, created_at
         ) VALUES (
-            #{categoryId}, #{fromMonth}, #{toMonth}, #{carryoverAmount}, #{createdAt}
+            #{userId}, #{categoryId}, #{fromMonth}, #{toMonth}, #{carryoverAmount}, #{createdAt}
         )
     </insert>
 

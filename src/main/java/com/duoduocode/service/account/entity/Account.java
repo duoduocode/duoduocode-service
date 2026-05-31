@@ -70,7 +70,12 @@ public class Account {
     private Integer sortOrder;
 
     /**
-     * 软删除标�?     */
+     * 账户描述
+     */
+    private String desc;
+
+    /**
+     * 软删除标�     */
     private Boolean isDeleted;
 
     /**
@@ -187,6 +192,14 @@ public class Account {
 
     public void setSortOrder(Integer sortOrder) {
         this.sortOrder = sortOrder;
+    }
+
+    public String getDesc() {
+        return desc;
+    }
+
+    public void setDesc(String desc) {
+        this.desc = desc;
     }
 
     public Boolean getIsDeleted() {

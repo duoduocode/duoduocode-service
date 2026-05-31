@@ -222,7 +222,7 @@ class CategoryServiceIntegrationTest {
         updateDto.setColor("#FF0000");
 
         assertDoesNotThrow(() -> {
-            categoryService.updateCategory(categoryId, updateDto);
+            categoryService.updateCategory(testUserId, categoryId, updateDto);
         });
     }
 
@@ -232,7 +232,7 @@ class CategoryServiceIntegrationTest {
         updateDto.setName("不存在");
 
         assertThrows(BusinessException.class, () -> {
-            categoryService.updateCategory(99999L, updateDto);
+            categoryService.updateCategory(testUserId, 99999L, updateDto);
         });
     }
 
@@ -247,7 +247,7 @@ class CategoryServiceIntegrationTest {
         updateDto.setName(uniqueName);
 
         assertThrows(BusinessException.class, () -> {
-            categoryService.updateCategory(categoryId2, updateDto);
+            categoryService.updateCategory(testUserId, categoryId2, updateDto);
         });
     }
 
@@ -256,14 +256,14 @@ class CategoryServiceIntegrationTest {
         Long categoryId = categoryService.createCategory(testUserId, createDto("待删除", "expense"));
 
         assertDoesNotThrow(() -> {
-            categoryService.deleteCategory(categoryId, null);
+            categoryService.deleteCategory(testUserId, categoryId, null);
         });
     }
 
     @Test
     void deleteCategory_shouldThrowExceptionWhenCategoryNotExist() {
         assertThrows(BusinessException.class, () -> {
-            categoryService.deleteCategory(99999L, null);
+            categoryService.deleteCategory(testUserId, 99999L, null);
         });
     }
 
@@ -280,7 +280,7 @@ class CategoryServiceIntegrationTest {
         Long targetId = categoryService.createCategory(testUserId, targetDto);
 
         assertDoesNotThrow(() -> {
-            categoryService.deleteCategory(parentId, targetId);
+            categoryService.deleteCategory(testUserId, parentId, targetId);
         });
     }
 

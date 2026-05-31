@@ -393,6 +393,7 @@ class BudgetServiceIntegrationTest {
     @Test
     void carryoverBudget_shouldThrowExceptionWhenDuplicate() {
         BudgetCarryover carryover = new BudgetCarryover();
+        carryover.setUserId(testUserId);
         carryover.setCategoryId(testCategoryId);
         carryover.setFromMonth("2026-04");
         carryover.setToMonth("2026-05");
@@ -423,6 +424,7 @@ class BudgetServiceIntegrationTest {
     @Test
     void getCarryoverStatistics_shouldReturnStatistics() {
         BudgetCarryover carryover = new BudgetCarryover();
+        carryover.setUserId(testUserId);
         carryover.setCategoryId(testCategoryId);
         carryover.setFromMonth("2026-04");
         carryover.setToMonth("2026-05");
@@ -441,6 +443,7 @@ class BudgetServiceIntegrationTest {
     @Test
     void getCarryoverHistory_shouldReturnHistory() {
         BudgetCarryover carryover = new BudgetCarryover();
+        carryover.setUserId(testUserId);
         carryover.setCategoryId(testCategoryId);
         carryover.setFromMonth("2026-04");
         carryover.setToMonth("2026-05");

@@ -61,6 +61,7 @@ class BudgetCarryoverMapperIntegrationTest {
 
     private BudgetCarryover createCarryover(String fromMonth, String toMonth, BigDecimal amount) {
         BudgetCarryover carryover = new BudgetCarryover();
+        carryover.setUserId(testUserId);
         carryover.setCategoryId(testCategoryId);
         carryover.setFromMonth(fromMonth);
         carryover.setToMonth(toMonth);

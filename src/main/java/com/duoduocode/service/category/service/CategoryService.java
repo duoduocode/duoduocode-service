@@ -8,6 +8,8 @@ import com.duoduocode.service.category.entity.Category;
 import com.duoduocode.service.category.mapper.CategoryMapper;
 import com.duoduocode.service.common.BusinessException;
 import com.duoduocode.service.common.ResultCode;
+import com.duoduocode.service.common.entity.UserDataHide;
+import com.duoduocode.service.common.mapper.UserDataHideMapper;
 import com.duoduocode.service.transaction.mapper.TransactionMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +34,7 @@ public class CategoryService {
 
     private final CategoryMapper categoryMapper;
     private final TransactionMapper transactionMapper;
+    private final UserDataHideMapper userDataHideMapper;
 
     /**
      * 获取分类列表（两级树形结构）
@@ -185,50 +188,83 @@ public class CategoryService {
 
     /**
      * 更新分类
-     *
-     * @param id  分类ID
-     * @param dto 分类数据传输对象
+     * 系统默认分类→"写时复制"：创建用户的副本并隐藏系统默认
+     * 用户自有分类→直接更新
      */
     @Transactional(rollbackFor = Exception.class)
-    public void updateCategory(Long id, CategoryDTO dto) {
-        // 检查分类是否存在
+    public Long updateCategory(Long userId, Long id, CategoryDTO dto) {
         Category existing = categoryMapper.selectById(id);
         if (existing == null) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND, "分类不存在");
         }
 
-        // 如果修改了名称，检查是否重复
-        if (dto.getName() != null && !dto.getName().trim().equals(existing.getName())) {
-            int count = categoryMapper.countByUserIdAndName(existing.getUserId(), dto.getName().trim(),
-                    existing.getType(), existing.getParentId(), id);
+        if (existing.getUserId() == null) {
+            Category copy = new Category();
+            copy.setUserId(userId);
+            copy.setName(existing.getName());
+            copy.setType(existing.getType());
+            copy.setParentId(existing.getParentId());
+            copy.setIcon(existing.getIcon());
+            copy.setColor(existing.getColor());
+            copy.setSortOrder(existing.getSortOrder());
+            copy.setIsDeleted(false);
+            copy.setCreatedAt(LocalDateTime.now());
+
+            applyCategoryDto(copy, dto, userId);
+
+            categoryMapper.insert(copy);
+
+            UserDataHide hide = new UserDataHide();
+            hide.setUserId(userId);
+            hide.setDataType("category");
+            hide.setRefId(id);
+            userDataHideMapper.insert(hide);
+
+            return copy.getId();
+        }
+
+        applyCategoryDto(existing, dto, existing.getUserId());
+        categoryMapper.updateById(existing);
+        return id;
+    }
+
+    private void applyCategoryDto(Category category, CategoryDTO dto, Long ownerUserId) {
+        if (dto.getName() != null && !dto.getName().trim().equals(category.getName())) {
+            int count = categoryMapper.countByUserIdAndName(ownerUserId, dto.getName().trim(),
+                    category.getType(), category.getParentId(), category.getId());
             if (count > 0) {
                 throw new BusinessException(ResultCode.DATA_ALREADY_EXISTS, "分类名称已存在");
             }
         }
 
-        // 更新分类
-        Category category = new Category();
-        category.setId(id);
         if (dto.getName() != null) category.setName(dto.getName().trim());
         if (dto.getIcon() != null) category.setIcon(dto.getIcon());
         if (dto.getColor() != null) category.setColor(dto.getColor());
         if (dto.getSortOrder() != null) category.setSortOrder(dto.getSortOrder());
-
-        categoryMapper.updateById(category);
     }
 
     /**
-     * 删除分类（软删除，需处理迁移）
-     *
-     * @param id          分类ID
-     * @param migrateToId 迁移目标分类ID（可选）
+     * 删除分类
+     * 系统默认分类：写入 user_data_hide 隐藏
+     * 用户自定义分类：软删除（需处理迁移）
      */
     @Transactional(rollbackFor = Exception.class)
-    public void deleteCategory(Long id, Long migrateToId) {
-        // 检查分类是否存在
+    public void deleteCategory(Long userId, Long id, Long migrateToId) {
         Category category = categoryMapper.selectById(id);
         if (category == null) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND, "分类不存在");
+        }
+
+        if (category.getUserId() == null) {
+            UserDataHide existing = userDataHideMapper.selectByUserAndRef(userId, "category", id);
+            if (existing == null) {
+                UserDataHide hide = new UserDataHide();
+                hide.setUserId(userId);
+                hide.setDataType("category");
+                hide.setRefId(id);
+                userDataHideMapper.insert(hide);
+            }
+            return;
         }
 
         // 如果是一级分类，处理子分类

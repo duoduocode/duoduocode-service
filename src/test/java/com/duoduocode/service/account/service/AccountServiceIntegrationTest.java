@@ -94,13 +94,13 @@ class AccountServiceIntegrationTest {
     }
 
     @Test
-    void createAccount_shouldThrowExceptionWhenNameDuplicate() {
-        String testName = "重复账户_" + System.currentTimeMillis();
+    void createAccount_shouldAllowDuplicateName() {
+        String testName = "重名账户_" + System.currentTimeMillis();
 
         accountService.createAccount(testUserId, createDto(testName, "asset"));
         Map<String, Object> dto2 = createDto(testName, "asset");
 
-        assertThrows(Exception.class, () -> {
+        assertDoesNotThrow(() -> {
             accountService.createAccount(testUserId, dto2);
         });
     }
@@ -116,7 +116,7 @@ class AccountServiceIntegrationTest {
         updateDto.put("color", "#FF0000");
 
         assertDoesNotThrow(() -> {
-            accountService.updateAccount(accountId, updateDto);
+            accountService.updateAccount(testUserId, accountId, updateDto);
         });
     }
 
@@ -125,7 +125,7 @@ class AccountServiceIntegrationTest {
         Long accountId = accountService.createAccount(testUserId, createDto("删除账户_" + System.currentTimeMillis(), "asset"));
 
         assertDoesNotThrow(() -> {
-            accountService.deleteAccount(accountId);
+            accountService.deleteAccount(testUserId, accountId);
         });
     }
 
@@ -178,14 +178,14 @@ class AccountServiceIntegrationTest {
         updateDto.put("name", "不存在账户");
 
         assertThrows(Exception.class, () -> {
-            accountService.updateAccount(99999L, updateDto);
+            accountService.updateAccount(testUserId, 99999L, updateDto);
         });
     }
 
     @Test
     void deleteAccount_shouldThrowExceptionWhenAccountNotExist() {
         assertThrows(Exception.class, () -> {
-            accountService.deleteAccount(99999L);
+            accountService.deleteAccount(testUserId, 99999L);
         });
     }
 
@@ -243,7 +243,7 @@ class AccountServiceIntegrationTest {
         updateDto.put("alertThreshold", 0.9);
 
         assertDoesNotThrow(() -> {
-            accountService.updateAccount(accountId, updateDto);
+            accountService.updateAccount(testUserId, accountId, updateDto);
         });
 
         Map<String, Object> detail = accountService.getAccountDetail(accountId);
@@ -255,7 +255,7 @@ class AccountServiceIntegrationTest {
     }
 
     @Test
-    void updateAccount_shouldThrowExceptionWhenNameDuplicate() {
+    void updateAccount_shouldAllowDuplicateName() {
         String testName = "重复名称_" + System.currentTimeMillis();
 
         accountService.createAccount(testUserId, createDto(testName, "asset"));
@@ -264,8 +264,8 @@ class AccountServiceIntegrationTest {
         Map<String, Object> updateDto = new HashMap<>();
         updateDto.put("name", testName);
 
-        assertThrows(Exception.class, () -> {
-            accountService.updateAccount(accountId2, updateDto);
+        assertDoesNotThrow(() -> {
+            accountService.updateAccount(testUserId, accountId2, updateDto);
         });
     }
 
@@ -277,7 +277,7 @@ class AccountServiceIntegrationTest {
         updateDto.put("name", "");
 
         assertDoesNotThrow(() -> {
-            accountService.updateAccount(accountId, updateDto);
+            accountService.updateAccount(testUserId, accountId, updateDto);
         });
     }
 
@@ -293,7 +293,7 @@ class AccountServiceIntegrationTest {
         Map<String, Object> summary = (Map<String, Object>) result.get("summary");
         assertEquals(0, new BigDecimal("3000").compareTo((BigDecimal) summary.get("totalAssets")));
         assertEquals(0, new BigDecimal("500").compareTo((BigDecimal) summary.get("totalLiabilities")));
-        assertEquals(0, new BigDecimal("3500").compareTo((BigDecimal) summary.get("netWorth")));
+        assertEquals(0, new BigDecimal("2500").compareTo((BigDecimal) summary.get("netWorth")));
     }
 
     @Test
@@ -336,5 +336,41 @@ class AccountServiceIntegrationTest {
 
         Map<String, Object> detail = accountService.getAccountDetail(accountId);
         assertEquals(0, new BigDecimal("5000").compareTo((BigDecimal) detail.get("initialBalance")));
+    }
+
+    @Test
+    void createAccount_shouldSaveDesc() {
+        Map<String, Object> dto = createDto("描述账户_" + System.currentTimeMillis(), "asset");
+        dto.put("desc", "我的工资卡");
+
+        Long accountId = accountService.createAccount(testUserId, dto);
+
+        Map<String, Object> detail = accountService.getAccountDetail(accountId);
+        assertEquals("我的工资卡", detail.get("desc"));
+    }
+
+    @Test
+    void updateAccount_shouldUpdateDesc() {
+        Long accountId = accountService.createAccount(testUserId, createDto("更新描述_" + System.currentTimeMillis(), "asset"));
+
+        Map<String, Object> updateDto = new HashMap<>();
+        updateDto.put("desc", "新的账户描述");
+
+        accountService.updateAccount(testUserId, accountId, updateDto);
+
+        Map<String, Object> detail = accountService.getAccountDetail(accountId);
+        assertEquals("新的账户描述", detail.get("desc"));
+    }
+
+    @Test
+    void getAccountDetail_shouldIncludeDesc() {
+        Map<String, Object> dto = createDto("详情描述_" + System.currentTimeMillis(), "asset");
+        dto.put("desc", "详细信息描述");
+
+        Long accountId = accountService.createAccount(testUserId, dto);
+
+        Map<String, Object> detail = accountService.getAccountDetail(accountId);
+        assertNotNull(detail.get("desc"));
+        assertEquals("详细信息描述", detail.get("desc"));
     }
 }

@@ -122,10 +122,11 @@ public class CategoryController {
      * @return 操作结果
      */
     @PutMapping("/{id}")
-    @Operation(summary = "更新分类", description = "更新分类信息")
-    public Result<Void> updateCategory(@Parameter(description = "分类ID") @PathVariable Long id, @Parameter(description = "分类数据") @RequestBody CategoryDTO dto) {
-        categoryService.updateCategory(id, dto);
-        return Result.success("更新成功", null);
+    @Operation(summary = "更新分类", description = "更新分类信息，修改系统默认分类时自动创建用户副本")
+    public Result<Long> updateCategory(@Parameter(description = "分类ID") @PathVariable Long id, @Parameter(description = "分类数据") @RequestBody CategoryDTO dto) {
+        Long userId = SecurityContext.requireUserId();
+        Long resultId = categoryService.updateCategory(userId, id, dto);
+        return Result.success("更新成功", resultId);
     }
 
     /**
@@ -141,7 +142,8 @@ public class CategoryController {
     public Result<Void> deleteCategory(
             @Parameter(description = "分类ID") @PathVariable Long id,
             @Parameter(description = "迁移目标分类ID") @RequestParam(required = false) Long migrateToId) {
-        categoryService.deleteCategory(id, migrateToId);
+        Long userId = SecurityContext.requireUserId();
+        categoryService.deleteCategory(userId, id, migrateToId);
         return Result.success("删除成功", null);
     }
 

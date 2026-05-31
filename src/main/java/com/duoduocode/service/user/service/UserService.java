@@ -1,6 +1,5 @@
 package com.duoduocode.service.user.service;
 
-import com.duoduocode.service.category.init.CategoryDataInitializer;
 import com.duoduocode.service.common.BusinessException;
 import com.duoduocode.service.common.ResultCode;
 import com.duoduocode.service.entity.User;
@@ -15,6 +14,7 @@ import org.springframework.web.client.RestTemplate;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -30,7 +30,6 @@ public class UserService {
 
     private final UserMapper userMapper;
     private final ObjectMapper objectMapper;
-    private final CategoryDataInitializer categoryDataInitializer;
 
     @Value("${wechat.mini.appid}")
     private String appid;
@@ -57,6 +56,7 @@ public class UserService {
 
         // 1. code 换 openid + session_key
         String openid = code2Session(code);
+        log.info("获取到微信openid={}", openid);
         if (openid == null || openid.isEmpty()) {
             throw new BusinessException(ResultCode.LOGIN_ERROR, "微信登录失败，无法获取用户标识");
         }
@@ -74,10 +74,10 @@ public class UserService {
             user.setStatus(1);
             user.setCreatedAt(LocalDateTime.now());
             user.setUpdatedAt(LocalDateTime.now());
+            user.setIsDeleted(false);
             userMapper.insert(user);
             isNewUser = true;
             log.info("新用户注册成功, userId={}, openid={}", user.getId(), openid);
-            categoryDataInitializer.initForUser(user.getId());
         }
 
         // 4. 更新最后登录时间
@@ -189,6 +189,23 @@ public class UserService {
 
         updateUser.setUpdatedAt(LocalDateTime.now());
         userMapper.updateById(updateUser);
+    }
+
+    /**
+     * 获取用户统计信息：记账天数、总笔数、净资产
+     *
+     * @param userId 用户ID
+     * @return {totalDays, totalCount, netAsset}
+     */
+    public Map<String, Object> getStats(Long userId) {
+        Map<String, Object> stats = userMapper.selectStats(userId);
+        if (stats == null) {
+            stats = new HashMap<>();
+            stats.put("totalDays", 0);
+            stats.put("totalCount", 0);
+            stats.put("netAsset", BigDecimal.ZERO);
+        }
+        return stats;
     }
 
     /**

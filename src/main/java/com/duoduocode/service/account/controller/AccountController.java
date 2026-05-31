@@ -83,10 +83,11 @@ public class AccountController {
      * @return 操作结果
      */
     @PutMapping("/{id}")
-    @Operation(summary = "更新账户", description = "更新账户信息")
-    public Result<Void> updateAccount(@Parameter(description = "账户ID") @PathVariable Long id, @Parameter(description = "账户数据") @RequestBody Map<String, Object> dto) {
-        accountService.updateAccount(id, dto);
-        return Result.success("更新成功", null);
+    @Operation(summary = "更新账户", description = "更新账户信息，修改系统默认账户时自动创建用户副本")
+    public Result<Long> updateAccount(@Parameter(description = "账户ID") @PathVariable Long id, @Parameter(description = "账户数据") @RequestBody Map<String, Object> dto) {
+        Long userId = SecurityContext.requireUserId();
+        Long resultId = accountService.updateAccount(userId, id, dto);
+        return Result.success("更新成功", resultId);
     }
 
     /**
@@ -99,8 +100,9 @@ public class AccountController {
     @DeleteMapping("/{id}")
     @Operation(summary = "删除账户", description = "删除指定账户")
     public Result<Void> deleteAccount(@Parameter(description = "账户ID") @PathVariable Long id) {
+        Long userId = SecurityContext.requireUserId();
         log.info("DELETE /v1/accounts/{}", id);
-        accountService.deleteAccount(id);
+        accountService.deleteAccount(userId, id);
         return Result.success("删除成功", null);
     }
 

@@ -5,6 +5,8 @@ import com.duoduocode.service.account.mapper.AccountMapper;
 import com.duoduocode.service.common.BusinessException;
 import com.duoduocode.service.common.ResultCode;
 import com.duoduocode.service.common.dto.PageResult;
+import com.duoduocode.service.common.entity.UserDataHide;
+import com.duoduocode.service.common.mapper.UserDataHideMapper;
 import com.duoduocode.service.transaction.dto.TransactionVO;
 import com.duoduocode.service.transaction.mapper.TransactionMapper;
 import com.duoduocode.service.transaction.entity.Transaction;
@@ -31,6 +33,7 @@ public class AccountService {
 
     private final AccountMapper accountMapper;
     private final TransactionMapper transactionMapper;
+    private final UserDataHideMapper userDataHideMapper;
 
     /**
      * 获取账户列表
@@ -65,7 +68,7 @@ public class AccountService {
         }
 
         // 计算净资产
-        BigDecimal netWorth = totalAssets.add(totalInvestments).add(totalLiabilities);
+        BigDecimal netWorth = totalAssets.add(totalInvestments).subtract(totalLiabilities);
 
         Map<String, Object> summary = new HashMap<>();
         summary.put("totalAssets", totalAssets);
@@ -122,13 +125,6 @@ public class AccountService {
             throw new BusinessException(ResultCode.PARAM_ERROR, "账户类型不能为空");
         }
 
-        // 检查名称是否重复
-        int count = accountMapper.countByUserIdAndName(userId, name, null);
-        if (count > 0) {
-            log.warn("创建账户失败: 名称已存在, userId={}, name={}", userId, name);
-            throw new BusinessException(ResultCode.BUSINESS_ERROR, "账户名称已存在");
-        }
-
         Account account = new Account();
         account.setUserId(userId);
         account.setName(name.trim());
@@ -150,6 +146,7 @@ public class AccountService {
         account.setAlertThreshold(alertThreshold != null ? new BigDecimal(alertThreshold.toString()) : BigDecimal.ZERO);
 
         account.setSortOrder((Integer) dto.getOrDefault("sortOrder", 0));
+        account.setDesc((String) dto.get("desc"));
         account.setIsDeleted(false);
         account.setCreatedAt(LocalDateTime.now());
         account.setUpdatedAt(LocalDateTime.now());
@@ -161,35 +158,84 @@ public class AccountService {
 
     /**
      * 更新账户
+     * 系统默认账户→"写时复制"：创建用户的副本并隐藏系统默认
+     * 用户自有账户→直接更新
+     *
+     * @return 账户ID（系统默认归为复制后的新ID）
      */
     @Transactional(rollbackFor = Exception.class)
-    public void updateAccount(Long accountId, Map<String, Object> dto) {
+    public Long updateAccount(Long userId, Long accountId, Map<String, Object> dto) {
         Account existing = accountMapper.selectById(accountId);
         if (existing == null || Boolean.TRUE.equals(existing.getIsDeleted())) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND, "账户不存在");
+        }
+
+        if (existing.getUserId() == null) {
+            Account copy = new Account();
+            copy.setUserId(userId);
+            copy.setName(existing.getName());
+            copy.setType(existing.getType());
+            copy.setIcon(existing.getIcon());
+            copy.setColor(existing.getColor());
+            copy.setInitialBalance(existing.getInitialBalance());
+            copy.setCreditLimit(existing.getCreditLimit());
+            copy.setIncludeInNetWorth(existing.getIncludeInNetWorth());
+            copy.setAllowTransfer(existing.getAllowTransfer());
+            copy.setEnableAlert(existing.getEnableAlert());
+            copy.setAlertThreshold(existing.getAlertThreshold());
+            copy.setSortOrder(existing.getSortOrder());
+            copy.setDesc(existing.getDesc());
+            copy.setIsDeleted(false);
+            copy.setCreatedAt(LocalDateTime.now());
+            copy.setUpdatedAt(LocalDateTime.now());
+
+            applyAccountDto(copy, dto, userId);
+
+            accountMapper.insert(copy);
+
+            UserDataHide hide = new UserDataHide();
+            hide.setUserId(userId);
+            hide.setDataType("account");
+            hide.setRefId(accountId);
+            userDataHideMapper.insert(hide);
+
+            return copy.getId();
         }
 
         Account account = new Account();
         account.setId(accountId);
         account.setUpdatedAt(LocalDateTime.now());
 
+        applyAccountDto(account, dto, existing.getUserId());
+
+        accountMapper.updateById(account);
+        return accountId;
+    }
+
+    private void applyAccountDto(Account account, Map<String, Object> dto, Long ownerUserId) {
         if (dto.containsKey("name")) {
             String name = (String) dto.get("name");
             if (name != null && !name.trim().isEmpty()) {
-                // 检查名称是否重复
-                int count = accountMapper.countByUserIdAndName(existing.getUserId(), name, accountId);
-                if (count > 0) {
-                    throw new BusinessException(ResultCode.BUSINESS_ERROR, "账户名称已存在");
-                }
                 account.setName(name.trim());
             }
         }
 
+        if (dto.containsKey("type")) {
+            account.setType((String) dto.get("type"));
+        }
         if (dto.containsKey("icon")) {
             account.setIcon((String) dto.get("icon"));
         }
         if (dto.containsKey("color")) {
             account.setColor((String) dto.get("color"));
+        }
+        if (dto.containsKey("initialBalance")) {
+            Object val = dto.get("initialBalance");
+            account.setInitialBalance(val != null ? new BigDecimal(val.toString()) : null);
+        }
+        if (dto.containsKey("creditLimit")) {
+            Object val = dto.get("creditLimit");
+            account.setCreditLimit(val != null ? new BigDecimal(val.toString()) : null);
         }
         if (dto.containsKey("includeInNetWorth")) {
             account.setIncludeInNetWorth((Boolean) dto.get("includeInNetWorth"));
@@ -201,26 +247,41 @@ public class AccountService {
             account.setEnableAlert((Boolean) dto.get("enableAlert"));
         }
         if (dto.containsKey("alertThreshold")) {
-            account.setAlertThreshold(new BigDecimal(dto.get("alertThreshold").toString()));
+            Object val = dto.get("alertThreshold");
+            account.setAlertThreshold(val != null ? new BigDecimal(val.toString()) : null);
         }
         if (dto.containsKey("sortOrder")) {
             account.setSortOrder((Integer) dto.get("sortOrder"));
         }
-
-        accountMapper.updateById(account);
+        if (dto.containsKey("desc")) {
+            account.setDesc((String) dto.get("desc"));
+        }
     }
 
     /**
      * 删除账户
+     * 系统默认账户：写入 user_data_hide 表隐藏
+     * 用户自定义账户：软删除
      */
     @Transactional(rollbackFor = Exception.class)
-    public void deleteAccount(Long accountId) {
+    public void deleteAccount(Long userId, Long accountId) {
         Account account = accountMapper.selectById(accountId);
         if (account == null || Boolean.TRUE.equals(account.getIsDeleted())) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND, "账户不存在");
         }
 
-        accountMapper.softDeleteById(accountId);
+        if (account.getUserId() == null) {
+            UserDataHide existing = userDataHideMapper.selectByUserAndRef(userId, "account", accountId);
+            if (existing == null) {
+                UserDataHide hide = new UserDataHide();
+                hide.setUserId(userId);
+                hide.setDataType("account");
+                hide.setRefId(accountId);
+                userDataHideMapper.insert(hide);
+            }
+        } else {
+            accountMapper.softDeleteById(accountId);
+        }
     }
 
     /**
@@ -284,6 +345,7 @@ public class AccountService {
         map.put("enableAlert", account.getEnableAlert());
         map.put("alertThreshold", account.getAlertThreshold());
         map.put("sortOrder", account.getSortOrder());
+        map.put("desc", account.getDesc());
         map.put("createdAt", account.getCreatedAt());
         map.put("updatedAt", account.getUpdatedAt());
         return map;

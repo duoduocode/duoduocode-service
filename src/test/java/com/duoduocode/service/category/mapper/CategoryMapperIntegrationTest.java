@@ -129,7 +129,8 @@ class CategoryMapperIntegrationTest {
         List<Category> result = categoryMapper.selectByUserId(testUserId);
 
         assertNotNull(result);
-        assertEquals(3, result.size());
+        long userCount = result.stream().filter(c -> c.getUserId() != null).count();
+        assertEquals(3, userCount);
     }
 
     @Test
@@ -137,7 +138,8 @@ class CategoryMapperIntegrationTest {
         List<Category> result = categoryMapper.selectByUserId(testUserId);
 
         assertNotNull(result);
-        assertEquals(0, result.size());
+        long userCount = result.stream().filter(c -> c.getUserId() != null).count();
+        assertEquals(0, userCount);
     }
 
     @Test
@@ -149,10 +151,12 @@ class CategoryMapperIntegrationTest {
         List<Category> expenseList = categoryMapper.selectByUserIdAndType(testUserId, "expense");
         List<Category> incomeList = categoryMapper.selectByUserIdAndType(testUserId, "income");
 
-        assertEquals(2, expenseList.size());
-        assertEquals(1, incomeList.size());
-        expenseList.forEach(c -> assertEquals("expense", c.getType()));
-        incomeList.forEach(c -> assertEquals("income", c.getType()));
+        long expenseUserCount = expenseList.stream().filter(c -> c.getUserId() != null).count();
+        long incomeUserCount = incomeList.stream().filter(c -> c.getUserId() != null).count();
+        assertEquals(2, expenseUserCount);
+        assertEquals(1, incomeUserCount);
+        expenseList.stream().filter(c -> c.getUserId() != null).forEach(c -> assertEquals("expense", c.getType()));
+        incomeList.stream().filter(c -> c.getUserId() != null).forEach(c -> assertEquals("income", c.getType()));
     }
 
     @Test
@@ -162,7 +166,8 @@ class CategoryMapperIntegrationTest {
         List<Category> result = categoryMapper.selectByUserIdAndType(testUserId, "income");
 
         assertNotNull(result);
-        assertEquals(0, result.size());
+        long userCount = result.stream().filter(c -> c.getUserId() != null).count();
+        assertEquals(0, userCount);
     }
 
     @Test
@@ -279,7 +284,8 @@ class CategoryMapperIntegrationTest {
         List<Category> result = categoryMapper.searchByKeyword(testUserId, "支出");
 
         assertNotNull(result);
-        assertEquals(2, result.size());
+        long userCount = result.stream().filter(c -> c.getUserId() != null).count();
+        assertEquals(2, userCount);
     }
 
     @Test
@@ -289,7 +295,8 @@ class CategoryMapperIntegrationTest {
         List<Category> result = categoryMapper.searchByKeyword(testUserId, "收入");
 
         assertNotNull(result);
-        assertEquals(0, result.size());
+        long userCount = result.stream().filter(c -> c.getUserId() != null).count();
+        assertEquals(0, userCount);
     }
 
     @Test

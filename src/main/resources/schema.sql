@@ -27,9 +27,10 @@ CREATE TABLE IF NOT EXISTS `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 
 -- 账户表
+-- user_id=NULL 为系统默认账户，user_id=实际ID 为用户自定义账户
 CREATE TABLE IF NOT EXISTS `account` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '账户ID',
-    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `user_id` BIGINT DEFAULT NULL COMMENT '用户ID，NULL为系统默认',
     `name` VARCHAR(50) NOT NULL COMMENT '账户名称',
     `type` VARCHAR(20) NOT NULL COMMENT '账户类型：asset-资产, liability-负债, investment-投资',
     `icon` VARCHAR(10) DEFAULT '💰' COMMENT '图标emoji',
@@ -44,12 +45,12 @@ CREATE TABLE IF NOT EXISTS `account` (
     `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '软删除标记',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `desc` VARCHAR(255) DEFAULT NULL COMMENT '账户描述',
     PRIMARY KEY (`id`),
     KEY `idx_user_id` (`user_id`),
     KEY `idx_type` (`type`),
     KEY `idx_user_type` (`user_id`, `type`),
-    KEY `idx_created_at` (`created_at`),
-    CONSTRAINT `fk_account_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+    KEY `idx_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='账户表';
 
 -- 交易表
@@ -94,9 +95,10 @@ CREATE TABLE IF NOT EXISTS `entry` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='分录表';
 
 -- 分类表
+-- user_id=NULL 为系统默认分类，user_id=实际ID 为用户自定义分类
 CREATE TABLE IF NOT EXISTS `category` (
     `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '分类ID',
-    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `user_id` BIGINT DEFAULT NULL COMMENT '用户ID，NULL为系统默认',
     `name` VARCHAR(50) NOT NULL COMMENT '分类名称',
     `type` VARCHAR(20) NOT NULL COMMENT '分类类型：expense-支出, income-收入',
     `icon` VARCHAR(10) DEFAULT '📦' COMMENT '图标emoji',
@@ -110,8 +112,7 @@ CREATE TABLE IF NOT EXISTS `category` (
     KEY `idx_user_id` (`user_id`),
     KEY `idx_parent_id` (`parent_id`),
     KEY `idx_type` (`type`),
-    KEY `idx_user_type` (`user_id`, `type`),
-    CONSTRAINT `fk_category_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+    KEY `idx_user_type` (`user_id`, `type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='分类表';
 
 -- 日常预算表
@@ -311,3 +312,210 @@ CREATE TABLE refund_record (
   CONSTRAINT fk_rr_transaction FOREIGN KEY (transaction_id) REFERENCES transaction(id) ON DELETE CASCADE,
   CONSTRAINT fk_rr_account FOREIGN KEY (account_id) REFERENCES account(id)
 ) ENGINE=InnoDB COMMENT='退款记录表';
+
+-- 用户数据隐藏表（用户隐藏系统默认的分类/账户时写入）
+CREATE TABLE IF NOT EXISTS `user_data_hide` (
+    `id`         BIGINT       NOT NULL AUTO_INCREMENT,
+    `user_id`    BIGINT       NOT NULL COMMENT '用户ID',
+    `data_type`  VARCHAR(10)  NOT NULL COMMENT '数据类型：category / account',
+    `ref_id`     BIGINT       NOT NULL COMMENT '被隐藏的系统默认数据ID',
+    `created_at` DATETIME     DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_type_ref` (`user_id`, `data_type`, `ref_id`),
+    KEY `idx_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户数据隐藏表';
+
+-- ============================================================
+-- 系统默认数据初始化（user_id=NULL 表示属于系统）
+-- ============================================================
+
+-- 默认账户（共10个）
+INSERT INTO account (user_id, name, type, icon, color, initial_balance, include_in_net_worth, allow_transfer, sort_order, is_deleted, created_at, updated_at) VALUES
+(NULL, '现金',         'asset',      '💵', '#07C160', 0, 1, 1, 1, 0, NOW(), NOW()),
+(NULL, '支付宝余额',   'asset',      '💙', '#1677FF', 0, 1, 1, 2, 0, NOW(), NOW()),
+(NULL, '微信钱包',     'asset',      '💚', '#07C160', 0, 1, 1, 3, 0, NOW(), NOW()),
+(NULL, '银行卡',       'asset',      '🏦', '#FF6B6B', 0, 1, 1, 4, 0, NOW(), NOW()),
+(NULL, '信用卡',       'liability',  '💳', '#4ECDC4', 0, 1, 1, 1, 0, NOW(), NOW()),
+(NULL, '花呗',         'liability',  '🌸', '#FF85A2', 0, 1, 1, 2, 0, NOW(), NOW()),
+(NULL, '借款',         'liability',  '🤝', '#C9B1FF', 0, 1, 1, 3, 0, NOW(), NOW()),
+(NULL, '股票账户',     'investment', '📊', '#E17055', 0, 1, 1, 1, 0, NOW(), NOW()),
+(NULL, '基金账户',     'investment', '📈', '#00B894', 0, 1, 1, 2, 0, NOW(), NOW()),
+(NULL, '定期存款',     'investment', '🏛️', '#6C5CE7', 0, 1, 1, 3, 0, NOW(), NOW());
+
+-- 默认支出大类（共13个）
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at) VALUES
+(NULL, '餐饮',       'expense', '🍜',  NULL, 1,  0, NOW()),
+(NULL, '交通',       'expense', '🚗',  NULL, 2,  0, NOW()),
+(NULL, '购物',       'expense', '🛒',  NULL, 3,  0, NOW()),
+(NULL, '居住',       'expense', '🏠',  NULL, 4,  0, NOW()),
+(NULL, '医疗',       'expense', '🏥',  NULL, 5,  0, NOW()),
+(NULL, '育儿',       'expense', '👶',  NULL, 6,  0, NOW()),
+(NULL, '娱乐',       'expense', '🎬',  NULL, 7,  0, NOW()),
+(NULL, '教育',       'expense', '📚',  NULL, 8,  0, NOW()),
+(NULL, '通讯',       'expense', '📱',  NULL, 9,  0, NOW()),
+(NULL, '人情',       'expense', '👫',  NULL, 10, 0, NOW()),
+(NULL, '宠物',       'expense', '🐱',  NULL, 11, 0, NOW()),
+(NULL, '金融保险',   'expense', '🏛️', NULL, 12, 0, NOW()),
+(NULL, '其他支出',   'expense', '🔧',  NULL, 99, 0, NOW());
+
+-- 默认支出二级分类（通过名称动态查找 parent_id）
+-- 餐饮子类
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '早午晚餐', 'expense', '🍚', id, 1, 0, NOW() FROM category WHERE user_id IS NULL AND name='餐饮' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '零食水果', 'expense', '🍎', id, 2, 0, NOW() FROM category WHERE user_id IS NULL AND name='餐饮' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '外卖',     'expense', '🥡', id, 3, 0, NOW() FROM category WHERE user_id IS NULL AND name='餐饮' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '饮品咖啡', 'expense', '☕', id, 4, 0, NOW() FROM category WHERE user_id IS NULL AND name='餐饮' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '聚餐宴请', 'expense', '🎉', id, 5, 0, NOW() FROM category WHERE user_id IS NULL AND name='餐饮' AND type='expense';
+-- 交通子类
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '公交地铁', 'expense', '🚇', id, 1, 0, NOW() FROM category WHERE user_id IS NULL AND name='交通' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '打车拼车', 'expense', '🚕', id, 2, 0, NOW() FROM category WHERE user_id IS NULL AND name='交通' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '加油充电', 'expense', '⛽', id, 3, 0, NOW() FROM category WHERE user_id IS NULL AND name='交通' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '停车费',   'expense', '🅿️', id, 4, 0, NOW() FROM category WHERE user_id IS NULL AND name='交通' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '火车飞机', 'expense', '✈️', id, 5, 0, NOW() FROM category WHERE user_id IS NULL AND name='交通' AND type='expense';
+-- 购物子类
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '服饰鞋包', 'expense', '👗', id, 1, 0, NOW() FROM category WHERE user_id IS NULL AND name='购物' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '数码电子', 'expense', '📱', id, 2, 0, NOW() FROM category WHERE user_id IS NULL AND name='购物' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '家居日用', 'expense', '🏠', id, 3, 0, NOW() FROM category WHERE user_id IS NULL AND name='购物' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '个人护理', 'expense', '💄', id, 4, 0, NOW() FROM category WHERE user_id IS NULL AND name='购物' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '其他购物', 'expense', '🛍️', id, 5, 0, NOW() FROM category WHERE user_id IS NULL AND name='购物' AND type='expense';
+-- 居住子类
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '房租',     'expense', '🏢', id, 1, 0, NOW() FROM category WHERE user_id IS NULL AND name='居住' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '房贷',     'expense', '🏦', id, 2, 0, NOW() FROM category WHERE user_id IS NULL AND name='居住' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '水电燃气', 'expense', '💡', id, 3, 0, NOW() FROM category WHERE user_id IS NULL AND name='居住' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '物业费',   'expense', '🏘️', id, 4, 0, NOW() FROM category WHERE user_id IS NULL AND name='居住' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '维修装修', 'expense', '🔧', id, 5, 0, NOW() FROM category WHERE user_id IS NULL AND name='居住' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '宽带网络', 'expense', '🌐', id, 6, 0, NOW() FROM category WHERE user_id IS NULL AND name='居住' AND type='expense';
+-- 医疗子类
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '门诊', 'expense', '🏥', id, 1, 0, NOW() FROM category WHERE user_id IS NULL AND name='医疗' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '住院', 'expense', '🏨', id, 2, 0, NOW() FROM category WHERE user_id IS NULL AND name='医疗' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '药品', 'expense', '💊', id, 3, 0, NOW() FROM category WHERE user_id IS NULL AND name='医疗' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '体检', 'expense', '🩺', id, 4, 0, NOW() FROM category WHERE user_id IS NULL AND name='医疗' AND type='expense';
+-- 育儿子类
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '奶粉尿布', 'expense', '🍼', id, 1, 0, NOW() FROM category WHERE user_id IS NULL AND name='育儿' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '教育学费', 'expense', '🏫', id, 2, 0, NOW() FROM category WHERE user_id IS NULL AND name='育儿' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '玩具',     'expense', '🧸', id, 3, 0, NOW() FROM category WHERE user_id IS NULL AND name='育儿' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '兴趣班',   'expense', '🎨', id, 4, 0, NOW() FROM category WHERE user_id IS NULL AND name='育儿' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '其他育儿', 'expense', '👶', id, 5, 0, NOW() FROM category WHERE user_id IS NULL AND name='育儿' AND type='expense';
+-- 娱乐子类
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, 'KTV电影',  'expense', '🎬', id, 1, 0, NOW() FROM category WHERE user_id IS NULL AND name='娱乐' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '旅行度假', 'expense', '✈️', id, 2, 0, NOW() FROM category WHERE user_id IS NULL AND name='娱乐' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '游戏',     'expense', '🎮', id, 3, 0, NOW() FROM category WHERE user_id IS NULL AND name='娱乐' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '运动健身', 'expense', '🏃', id, 4, 0, NOW() FROM category WHERE user_id IS NULL AND name='娱乐' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '其他娱乐', 'expense', '🎉', id, 5, 0, NOW() FROM category WHERE user_id IS NULL AND name='娱乐' AND type='expense';
+-- 教育子类
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '书籍',     'expense', '📖', id, 1, 0, NOW() FROM category WHERE user_id IS NULL AND name='教育' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '在线课程', 'expense', '💻', id, 2, 0, NOW() FROM category WHERE user_id IS NULL AND name='教育' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '文具',     'expense', '✏️', id, 3, 0, NOW() FROM category WHERE user_id IS NULL AND name='教育' AND type='expense';
+-- 通讯子类
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '手机话费', 'expense', '📞', id, 1, 0, NOW() FROM category WHERE user_id IS NULL AND name='通讯' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '快递邮寄', 'expense', '📦', id, 2, 0, NOW() FROM category WHERE user_id IS NULL AND name='通讯' AND type='expense';
+-- 人情子类
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '红包礼金', 'expense', '🧧', id, 1, 0, NOW() FROM category WHERE user_id IS NULL AND name='人情' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '请客送礼', 'expense', '🎁', id, 2, 0, NOW() FROM category WHERE user_id IS NULL AND name='人情' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '孝敬长辈', 'expense', '👴', id, 3, 0, NOW() FROM category WHERE user_id IS NULL AND name='人情' AND type='expense';
+-- 宠物子类
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '宠物食品', 'expense', '🐕', id, 1, 0, NOW() FROM category WHERE user_id IS NULL AND name='宠物' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '宠物医疗', 'expense', '🏥', id, 2, 0, NOW() FROM category WHERE user_id IS NULL AND name='宠物' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '宠物用品', 'expense', '🧹', id, 3, 0, NOW() FROM category WHERE user_id IS NULL AND name='宠物' AND type='expense';
+-- 金融保险子类
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '保险',     'expense', '🛡️', id, 1, 0, NOW() FROM category WHERE user_id IS NULL AND name='金融保险' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '贷款利息', 'expense', '💰', id, 2, 0, NOW() FROM category WHERE user_id IS NULL AND name='金融保险' AND type='expense';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '手续费',   'expense', '💳', id, 3, 0, NOW() FROM category WHERE user_id IS NULL AND name='金融保险' AND type='expense';
+-- 其他支出子类
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '其他支出', 'expense', '🔧', id, 1, 0, NOW() FROM category WHERE user_id IS NULL AND name='其他支出' AND type='expense';
+
+-- 默认收入大类（共6个）
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at) VALUES
+(NULL, '工资',       'income', '💰', NULL, 1,  0, NOW()),
+(NULL, '兼职副业',   'income', '💵', NULL, 2,  0, NOW()),
+(NULL, '投资收益',   'income', '📈', NULL, 3,  0, NOW()),
+(NULL, '红包礼金',   'income', '🎁', NULL, 4,  0, NOW()),
+(NULL, '退款报销',   'income', '🔙', NULL, 5,  0, NOW()),
+(NULL, '其他收入',   'income', '🔧', NULL, 99, 0, NOW());
+
+-- 默认收入二级分类（按parent_id关联，共约19个）
+-- 工资子类 (parent_id for 工资 after insert)
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '基本工资', 'income', '💰', id, 1, 0, NOW() FROM category WHERE user_id IS NULL AND name='工资' AND type='income';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '加班费',   'income', '🕐', id, 2, 0, NOW() FROM category WHERE user_id IS NULL AND name='工资' AND type='income';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '奖金年终', 'income', '🎉', id, 3, 0, NOW() FROM category WHERE user_id IS NULL AND name='工资' AND type='income';
+-- 兼职副业子类
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '副业兼职', 'income', '💻', id, 1, 0, NOW() FROM category WHERE user_id IS NULL AND name='兼职副业' AND type='income';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '自由职业', 'income', '✍️', id, 2, 0, NOW() FROM category WHERE user_id IS NULL AND name='兼职副业' AND type='income';
+-- 投资收益子类
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '理财收益', 'income', '📊', id, 1, 0, NOW() FROM category WHERE user_id IS NULL AND name='投资收益' AND type='income';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '股息红利', 'income', '💹', id, 2, 0, NOW() FROM category WHERE user_id IS NULL AND name='投资收益' AND type='income';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '房租收入', 'income', '🏠', id, 3, 0, NOW() FROM category WHERE user_id IS NULL AND name='投资收益' AND type='income';
+-- 红包礼金子类
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '微信红包', 'income', '🧧', id, 1, 0, NOW() FROM category WHERE user_id IS NULL AND name='红包礼金' AND type='income';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '节日礼金', 'income', '🎁', id, 2, 0, NOW() FROM category WHERE user_id IS NULL AND name='红包礼金' AND type='income';
+-- 退款报销子类
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '购物退款',   'income', '🛍️', id, 1, 0, NOW() FROM category WHERE user_id IS NULL AND name='退款报销' AND type='income';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '差旅报销',   'income', '🚗', id, 2, 0, NOW() FROM category WHERE user_id IS NULL AND name='退款报销' AND type='income';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '餐补交通补', 'income', '🍱', id, 3, 0, NOW() FROM category WHERE user_id IS NULL AND name='退款报销' AND type='income';
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '其他退款',   'income', '🔙', id, 4, 0, NOW() FROM category WHERE user_id IS NULL AND name='退款报销' AND type='income';
+-- 其他收入子类
+INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
+SELECT NULL, '其他收入', 'income', '🔧', id, 1, 0, NOW() FROM category WHERE user_id IS NULL AND name='其他收入' AND type='income';

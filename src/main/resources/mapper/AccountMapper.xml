@@ -16,6 +16,7 @@
         <result column="enable_alert" property="enableAlert"/>
         <result column="alert_threshold" property="alertThreshold"/>
         <result column="sort_order" property="sortOrder"/>
+        <result column="desc" property="desc"/>
         <result column="is_deleted" property="isDeleted"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
@@ -24,7 +25,7 @@
     <sql id="Base_Column_List">
         id, user_id, name, type, icon, color, initial_balance, credit_limit,
         include_in_net_worth, allow_transfer, enable_alert, alert_threshold,
-        sort_order, is_deleted, created_at, updated_at
+        sort_order, `desc`, is_deleted, created_at, updated_at
     </sql>
 
     <!-- 插入账户 -->
@@ -32,11 +33,11 @@
         INSERT INTO account (
             user_id, name, type, icon, color, initial_balance, credit_limit,
             include_in_net_worth, allow_transfer, enable_alert, alert_threshold,
-            sort_order, is_deleted, created_at, updated_at
+            sort_order, `desc`, is_deleted, created_at, updated_at
         ) VALUES (
             #{userId}, #{name}, #{type}, #{icon}, #{color}, #{initialBalance}, #{creditLimit},
             #{includeInNetWorth}, #{allowTransfer}, #{enableAlert}, #{alertThreshold},
-            #{sortOrder}, #{isDeleted}, #{createdAt}, #{updatedAt}
+            #{sortOrder}, #{desc}, #{isDeleted}, #{createdAt}, #{updatedAt}
         )
     </insert>
 
@@ -55,6 +56,7 @@
             <if test="enableAlert != null">enable_alert = #{enableAlert},</if>
             <if test="alertThreshold != null">alert_threshold = #{alertThreshold},</if>
             <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="desc != null">`desc` = #{desc},</if>
             <if test="updatedAt != null">updated_at = #{updatedAt},</if>
         </set>
         WHERE id = #{id}
@@ -67,23 +69,25 @@
         WHERE id = #{id} AND is_deleted = 0
     </select>
 
-    <!-- 根据用户ID查询账户列表 -->
+    <!-- 根据用户ID查询账户列表（含系统默认，排除隐藏） -->
     <select id="selectByUserId" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM account
-        WHERE user_id = #{userId} AND is_deleted = 0
-        ORDER BY sort_order ASC, created_at ASC
+        WHERE (user_id IS NULL OR user_id = #{userId}) AND is_deleted = 0
+          AND id NOT IN (SELECT ref_id FROM user_data_hide WHERE user_id = #{userId} AND data_type = 'account')
+        ORDER BY user_id IS NOT NULL, updated_at DESC
     </select>
 
-    <!-- 根据用户ID和类型查询账户列表 -->
+    <!-- 根据用户ID和类型查询账户列表（含系统默认，排除隐藏） -->
     <select id="selectByUserIdAndType" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM account
-        WHERE user_id = #{userId} AND type = #{type} AND is_deleted = 0
-        ORDER BY sort_order ASC, created_at ASC
+        WHERE (user_id IS NULL OR user_id = #{userId}) AND type = #{type} AND is_deleted = 0
+          AND id NOT IN (SELECT ref_id FROM user_data_hide WHERE user_id = #{userId} AND data_type = 'account')
+        ORDER BY user_id IS NOT NULL, updated_at DESC
     </select>
 
-    <!-- 检查账户名称是否存在 -->
+    <!-- 检查账户名称是否存在（仅查用户自己的） -->
     <select id="countByUserIdAndName" resultType="int">
         SELECT COUNT(1)
         FROM account
