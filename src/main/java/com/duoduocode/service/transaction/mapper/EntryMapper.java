@@ -84,4 +84,9 @@ public interface EntryMapper {
      * 根据交易ID删除分录
      */
     int deleteByTransactionId(@Param("transactionId") Long transactionId);
+
+    /**
+     * 根据交易ID列表批量查询分录
+     */
+    List<Entry> selectByTransactionIds(@Param("transactionIds") List<Long> transactionIds);
 }

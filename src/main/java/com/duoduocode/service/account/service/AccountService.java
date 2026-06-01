@@ -1,15 +1,20 @@
 package com.duoduocode.service.account.service;
 
+import com.duoduocode.service.account.dto.AccountStatisticsVO;
 import com.duoduocode.service.account.entity.Account;
 import com.duoduocode.service.account.mapper.AccountMapper;
+import com.duoduocode.service.category.entity.Category;
+import com.duoduocode.service.category.mapper.CategoryMapper;
 import com.duoduocode.service.common.BusinessException;
 import com.duoduocode.service.common.ResultCode;
 import com.duoduocode.service.common.dto.PageResult;
 import com.duoduocode.service.common.entity.UserDataHide;
 import com.duoduocode.service.common.mapper.UserDataHideMapper;
 import com.duoduocode.service.transaction.dto.TransactionVO;
-import com.duoduocode.service.transaction.mapper.TransactionMapper;
 import com.duoduocode.service.transaction.entity.Transaction;
+import com.duoduocode.service.transaction.entity.Entry;
+import com.duoduocode.service.transaction.mapper.EntryMapper;
+import com.duoduocode.service.transaction.mapper.TransactionMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -22,6 +27,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 账户服务类
@@ -34,6 +40,8 @@ public class AccountService {
     private final AccountMapper accountMapper;
     private final TransactionMapper transactionMapper;
     private final UserDataHideMapper userDataHideMapper;
+    private final EntryMapper entryMapper;
+    private final CategoryMapper categoryMapper;
 
     /**
      * 获取账户列表
@@ -286,18 +294,14 @@ public class AccountService {
     }
 
     /**
-     * 获取账户交易流水
+     * 获取账户交易流水（含分类和关联账户信息）
      */
     public PageResult<TransactionVO> getAccountTransactions(Long accountId, int page, int pageSize) {
         int offset = (page - 1) * pageSize;
 
-        // 查询交易列表
         List<Transaction> transactions = transactionMapper.selectByAccountId(accountId, offset, pageSize);
-
-        // 查询总数
         Long total = transactionMapper.countByAccountId(accountId);
 
-        // 转换为VO
         List<TransactionVO> voList = new ArrayList<>();
         for (Transaction transaction : transactions) {
             TransactionVO vo = new TransactionVO();
@@ -305,10 +309,62 @@ public class AccountService {
             voList.add(vo);
         }
 
+        if (!voList.isEmpty()) {
+            List<Long> txIds = voList.stream().map(TransactionVO::getId).collect(Collectors.toList());
+            List<Entry> allEntries = entryMapper.selectByTransactionIds(txIds);
+
+            Map<Long, List<Entry>> entryMap = allEntries.stream()
+                    .collect(Collectors.groupingBy(Entry::getTransactionId));
+
+            for (TransactionVO vo : voList) {
+                List<Entry> entries = entryMap.getOrDefault(vo.getId(), new ArrayList<>());
+                fillCategories(vo, entries);
+                fillRelatedAccount(vo, entries, accountId);
+            }
+        }
+
         boolean hasMore = (page * pageSize) < total;
         PageResult<TransactionVO> result = PageResult.of(voList, page, pageSize, hasMore);
         result.setTotal(total);
         return result;
+    }
+
+    private void fillCategories(TransactionVO vo, List<Entry> entries) {
+        for (Entry entry : entries) {
+            if ("category".equals(entry.getAccountType())) {
+                Category category = categoryMapper.selectById(entry.getAccountId());
+                if (category != null) {
+                    vo.setCategoryName(category.getName());
+                    vo.setCategoryIcon(category.getIcon());
+                    if (category.getParentId() != null) {
+                        Category parent = categoryMapper.selectById(category.getParentId());
+                        if (parent != null) {
+                            vo.setParentCategoryName(parent.getName());
+                            vo.setParentCategoryIcon(parent.getIcon());
+                        }
+                    }
+                }
+                return;
+            }
+        }
+    }
+
+    private void fillRelatedAccount(TransactionVO vo, List<Entry> entries, Long currentAccountId) {
+        String type = vo.getTransactionType();
+        if (!"transfer".equals(type) && !"repayment".equals(type)) {
+            return;
+        }
+
+        for (Entry entry : entries) {
+            if ("account".equals(entry.getAccountType()) && !entry.getAccountId().equals(currentAccountId)) {
+                Account related = accountMapper.selectById(entry.getAccountId());
+                if (related != null) {
+                    vo.setRelatedAccountName(related.getName());
+                    vo.setRelatedAccountIcon(related.getIcon());
+                }
+                return;
+            }
+        }
     }
 
     /**
@@ -327,6 +383,33 @@ public class AccountService {
         updateAccount.setInitialBalance(newBalance);
         updateAccount.setUpdatedAt(LocalDateTime.now());
         accountMapper.updateById(updateAccount);
+    }
+
+    /**
+     * 统计账户在指定时间范围内的收支情况
+     */
+    public AccountStatisticsVO getAccountStatistics(Long accountId, String startDate, String endDate) {
+        Account account = accountMapper.selectById(accountId);
+        if (account == null || Boolean.TRUE.equals(account.getIsDeleted())) {
+            throw new BusinessException(ResultCode.DATA_NOT_FOUND, "账户不存在");
+        }
+
+        Map<String, Object> stats = transactionMapper.calculateAccountStatistics(accountId, startDate, endDate);
+        BigDecimal income = toBigDecimal(stats.get("income"));
+        BigDecimal expense = toBigDecimal(stats.get("expense"));
+        Long transactionCount = toLong(stats.get("transactionCount"));
+
+        return new AccountStatisticsVO(income, expense, transactionCount);
+    }
+
+    private BigDecimal toBigDecimal(Object value) {
+        if (value == null) return BigDecimal.ZERO;
+        return new BigDecimal(value.toString());
+    }
+
+    private Long toLong(Object value) {
+        if (value == null) return 0L;
+        return ((Number) value).longValue();
     }
 
     /**

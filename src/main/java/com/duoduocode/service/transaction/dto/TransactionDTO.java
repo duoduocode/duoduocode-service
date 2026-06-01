@@ -1,5 +1,7 @@
 package com.duoduocode.service.transaction.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -36,13 +38,15 @@ public class TransactionDTO {
     private String transactionType;
 
     /**
-     * 账户ID
+     * 账户ID（转账时为源账户）
      */
+    @JsonAlias("fromAccountId")
     private Long accountId;
 
     /**
      * 目标账户ID（转账/还款用）
      */
+    @JsonAlias("toAccountId")
     private Long targetAccountId;
 
     /**

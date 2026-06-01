@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 交易 Mapper 接口
@@ -133,4 +134,11 @@ public interface TransactionMapper {
      */
     List<Transaction> selectRecentByAccountId(@Param("accountId") Long accountId,
                                                @Param("limit") Integer limit);
+
+    /**
+     * 统计账户在指定时间范围内的收支情况
+     */
+    Map<String, Object> calculateAccountStatistics(@Param("accountId") Long accountId,
+                                                    @Param("startDate") String startDate,
+                                                    @Param("endDate") String endDate);
 }

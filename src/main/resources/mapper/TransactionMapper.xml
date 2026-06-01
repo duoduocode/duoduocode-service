@@ -352,4 +352,19 @@
         LIMIT #{limit}
     </select>
 
+    <!-- 统计账户在指定时间范围内的收支情况 -->
+    <select id="calculateAccountStatistics" resultType="java.util.Map">
+        SELECT
+            COALESCE(SUM(e.debit), 0) AS income,
+            COALESCE(SUM(e.credit), 0) AS expense,
+            COUNT(DISTINCT t.id) AS transactionCount
+        FROM entry e
+        INNER JOIN `transaction` t ON t.id = e.transaction_id AND t.is_deleted = 0
+        WHERE e.account_id = #{accountId}
+          AND e.account_type = 'account'
+          AND e.is_deleted = 0
+          AND t.date >= #{startDate}
+          AND t.date &lt;= #{endDate}
+    </select>
+
 </mapper>

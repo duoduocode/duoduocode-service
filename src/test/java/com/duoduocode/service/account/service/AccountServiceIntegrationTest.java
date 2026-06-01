@@ -1,9 +1,14 @@
 package com.duoduocode.service.account.service;
 
+import com.duoduocode.service.account.dto.AccountStatisticsVO;
 import com.duoduocode.service.account.mapper.AccountMapper;
 import com.duoduocode.service.common.dto.PageResult;
 import com.duoduocode.service.entity.User;
 import com.duoduocode.service.transaction.dto.TransactionVO;
+import com.duoduocode.service.transaction.entity.Entry;
+import com.duoduocode.service.transaction.entity.Transaction;
+import com.duoduocode.service.transaction.mapper.EntryMapper;
+import com.duoduocode.service.transaction.mapper.TransactionMapper;
 import com.duoduocode.service.user.mapper.UserMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,7 +18,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,6 +39,12 @@ class AccountServiceIntegrationTest {
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private TransactionMapper transactionMapper;
+
+    @Autowired
+    private EntryMapper entryMapper;
 
     private Long testUserId;
 
@@ -372,5 +385,146 @@ class AccountServiceIntegrationTest {
         Map<String, Object> detail = accountService.getAccountDetail(accountId);
         assertNotNull(detail.get("desc"));
         assertEquals("详细信息描述", detail.get("desc"));
+    }
+
+    @Test
+    void getAccountStatistics_shouldReturnIncomeAndExpense() {
+        Long accountId = accountService.createAccount(testUserId, createDto("统计测试_" + System.currentTimeMillis(), "asset", 0));
+
+        Transaction incomeTx = new Transaction();
+        incomeTx.setUserId(testUserId);
+        incomeTx.setDate(LocalDate.parse("2026-05-15"));
+        incomeTx.setTime(LocalTime.now());
+        incomeTx.setAmount(new BigDecimal("500.00"));
+        incomeTx.setDescription("测试收入");
+        incomeTx.setMode("simple");
+        incomeTx.setTransactionType("income");
+        incomeTx.setRefundStatus("none");
+        incomeTx.setRefundedAmount(BigDecimal.ZERO);
+        incomeTx.setIsDeleted(0);
+        incomeTx.setCreatedAt(LocalDateTime.now());
+        incomeTx.setUpdatedAt(LocalDateTime.now());
+        transactionMapper.insert(incomeTx);
+
+        Entry incomeEntry = new Entry();
+        incomeEntry.setTransactionId(incomeTx.getId());
+        incomeEntry.setAccountId(accountId);
+        incomeEntry.setDebit(new BigDecimal("500.00"));
+        incomeEntry.setCredit(null);
+        incomeEntry.setAccountType("account");
+        incomeEntry.setIsDeleted(0);
+        incomeEntry.setCreatedAt(LocalDateTime.now());
+        entryMapper.insert(incomeEntry);
+
+        Transaction expenseTx = new Transaction();
+        expenseTx.setUserId(testUserId);
+        expenseTx.setDate(LocalDate.parse("2026-05-20"));
+        expenseTx.setTime(LocalTime.now());
+        expenseTx.setAmount(new BigDecimal("200.00"));
+        expenseTx.setDescription("测试支出");
+        expenseTx.setMode("simple");
+        expenseTx.setTransactionType("expense");
+        expenseTx.setRefundStatus("none");
+        expenseTx.setRefundedAmount(BigDecimal.ZERO);
+        expenseTx.setIsDeleted(0);
+        expenseTx.setCreatedAt(LocalDateTime.now());
+        expenseTx.setUpdatedAt(LocalDateTime.now());
+        transactionMapper.insert(expenseTx);
+
+        Entry expenseEntry = new Entry();
+        expenseEntry.setTransactionId(expenseTx.getId());
+        expenseEntry.setAccountId(accountId);
+        expenseEntry.setDebit(null);
+        expenseEntry.setCredit(new BigDecimal("200.00"));
+        expenseEntry.setAccountType("account");
+        expenseEntry.setIsDeleted(0);
+        expenseEntry.setCreatedAt(LocalDateTime.now());
+        entryMapper.insert(expenseEntry);
+
+        AccountStatisticsVO stats = accountService.getAccountStatistics(accountId, "2026-05-01", "2026-05-31");
+
+        assertNotNull(stats);
+        assertEquals(0, new BigDecimal("500.00").compareTo(stats.getIncome()));
+        assertEquals(0, new BigDecimal("200.00").compareTo(stats.getExpense()));
+        assertEquals(2L, stats.getTransactionCount().longValue());
+    }
+
+    @Test
+    void getAccountStatistics_shouldFilterByDateRange() {
+        Long accountId = accountService.createAccount(testUserId, createDto("日期范围测试_" + System.currentTimeMillis(), "asset", 0));
+
+        Transaction txInRange = new Transaction();
+        txInRange.setUserId(testUserId);
+        txInRange.setDate(LocalDate.parse("2026-05-15"));
+        txInRange.setTime(LocalTime.now());
+        txInRange.setAmount(new BigDecimal("300.00"));
+        txInRange.setDescription("范围内");
+        txInRange.setMode("simple");
+        txInRange.setTransactionType("income");
+        txInRange.setRefundStatus("none");
+        txInRange.setRefundedAmount(BigDecimal.ZERO);
+        txInRange.setIsDeleted(0);
+        txInRange.setCreatedAt(LocalDateTime.now());
+        txInRange.setUpdatedAt(LocalDateTime.now());
+        transactionMapper.insert(txInRange);
+
+        Entry entryInRange = new Entry();
+        entryInRange.setTransactionId(txInRange.getId());
+        entryInRange.setAccountId(accountId);
+        entryInRange.setDebit(new BigDecimal("300.00"));
+        entryInRange.setAccountType("account");
+        entryInRange.setIsDeleted(0);
+        entryInRange.setCreatedAt(LocalDateTime.now());
+        entryMapper.insert(entryInRange);
+
+        Transaction txOutRange = new Transaction();
+        txOutRange.setUserId(testUserId);
+        txOutRange.setDate(LocalDate.parse("2026-04-28"));
+        txOutRange.setTime(LocalTime.now());
+        txOutRange.setAmount(new BigDecimal("100.00"));
+        txOutRange.setDescription("范围外");
+        txOutRange.setMode("simple");
+        txOutRange.setTransactionType("income");
+        txOutRange.setRefundStatus("none");
+        txOutRange.setRefundedAmount(BigDecimal.ZERO);
+        txOutRange.setIsDeleted(0);
+        txOutRange.setCreatedAt(LocalDateTime.now());
+        txOutRange.setUpdatedAt(LocalDateTime.now());
+        transactionMapper.insert(txOutRange);
+
+        Entry entryOutRange = new Entry();
+        entryOutRange.setTransactionId(txOutRange.getId());
+        entryOutRange.setAccountId(accountId);
+        entryOutRange.setDebit(new BigDecimal("100.00"));
+        entryOutRange.setAccountType("account");
+        entryOutRange.setIsDeleted(0);
+        entryOutRange.setCreatedAt(LocalDateTime.now());
+        entryMapper.insert(entryOutRange);
+
+        AccountStatisticsVO stats = accountService.getAccountStatistics(accountId, "2026-05-01", "2026-05-31");
+
+        assertNotNull(stats);
+        assertEquals(0, new BigDecimal("300.00").compareTo(stats.getIncome()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(stats.getExpense()));
+        assertEquals(1L, stats.getTransactionCount().longValue());
+    }
+
+    @Test
+    void getAccountStatistics_shouldReturnZeroWhenNoTransactions() {
+        Long accountId = accountService.createAccount(testUserId, createDto("空统计_" + System.currentTimeMillis(), "asset", 0));
+
+        AccountStatisticsVO stats = accountService.getAccountStatistics(accountId, "2026-05-01", "2026-05-31");
+
+        assertNotNull(stats);
+        assertEquals(0, BigDecimal.ZERO.compareTo(stats.getIncome()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(stats.getExpense()));
+        assertEquals(0L, stats.getTransactionCount().longValue());
+    }
+
+    @Test
+    void getAccountStatistics_shouldThrowWhenAccountNotExist() {
+        assertThrows(Exception.class, () -> {
+            accountService.getAccountStatistics(99999L, "2026-05-01", "2026-05-31");
+        });
     }
 }

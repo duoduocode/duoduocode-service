@@ -51,6 +51,18 @@
         ORDER BY id ASC
     </select>
 
+    <!-- 根据交易ID列表批量查询分录 -->
+    <select id="selectByTransactionIds" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM entry
+        WHERE transaction_id IN
+        <foreach collection="transactionIds" item="txId" open="(" separator="," close=")">
+            #{txId}
+        </foreach>
+        AND is_deleted = 0
+        ORDER BY id ASC
+    </select>
+
     <!-- 根据ID删除分录 -->
     <delete id="deleteById">
         DELETE FROM entry

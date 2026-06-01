@@ -457,6 +457,22 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
   - `reason`: 调整原因
 - **响应**: `Void`
 
+### 5.8 获取账户收支统计
+- **URL**: `GET /v1/accounts/{id}/statistics`
+- **说明**: 统计指定账户在时间范围内的收入、支出和交易笔数
+- **参数**:
+  - `id`: 账户ID (路径参数)
+  - `startDate`: 开始日期 YYYY-MM-DD (查询参数)
+  - `endDate`: 结束日期 YYYY-MM-DD (查询参数)
+- **响应**: `AccountStatisticsVO`
+  ```json
+  {
+    "income": 3500.00,
+    "expense": 1280.50,
+    "transactionCount": 12
+  }
+  ```
+
 ---
 
 ## 6. 预算管理 (Budgets)

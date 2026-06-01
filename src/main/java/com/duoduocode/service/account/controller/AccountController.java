@@ -1,5 +1,6 @@
 package com.duoduocode.service.account.controller;
 
+import com.duoduocode.service.account.dto.AccountStatisticsVO;
 import com.duoduocode.service.account.service.AccountService;
 import com.duoduocode.service.common.Result;
 import com.duoduocode.service.common.dto.PageResult;
@@ -140,5 +141,25 @@ public class AccountController {
         String reason = (String) dto.get("reason");
         accountService.adjustBalance(id, newBalance, reason);
         return Result.success("调整成功", null);
+    }
+
+    /**
+     * 获取账户收支统计
+     * GET /v1/accounts/{id}/statistics
+     *
+     * @param id        账户ID
+     * @param startDate 开始日期 YYYY-MM-DD
+     * @param endDate   结束日期 YYYY-MM-DD
+     * @return 收支统计
+     */
+    @GetMapping("/{id}/statistics")
+    @Operation(summary = "获取账户收支统计", description = "统计指定账户在时间范围内的收入、支出和交易笔数")
+    public Result<AccountStatisticsVO> getAccountStatistics(
+            @Parameter(description = "账户ID") @PathVariable Long id,
+            @Parameter(description = "开始日期 YYYY-MM-DD") @RequestParam String startDate,
+            @Parameter(description = "结束日期 YYYY-MM-DD") @RequestParam String endDate) {
+        log.debug("GET /v1/accounts/{}/statistics - startDate={}, endDate={}", id, startDate, endDate);
+        AccountStatisticsVO vo = accountService.getAccountStatistics(id, startDate, endDate);
+        return Result.success(vo);
     }
 }

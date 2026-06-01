@@ -72,6 +72,36 @@ public class TransactionVO {
     private String accountName;
 
     /**
+     * 分类名称
+     */
+    private String categoryName;
+
+    /**
+     * 分类图标
+     */
+    private String categoryIcon;
+
+    /**
+     * 父级分类名称
+     */
+    private String parentCategoryName;
+
+    /**
+     * 父级分类图标
+     */
+    private String parentCategoryIcon;
+
+    /**
+     * 关联账户名称（转账目标/还款目标）
+     */
+    private String relatedAccountName;
+
+    /**
+     * 关联账户图标
+     */
+    private String relatedAccountIcon;
+
+    /**
      * 分录列表
      */
     private List<EntryVO> entries;
@@ -182,6 +212,54 @@ public class TransactionVO {
 
     public void setAccountName(String accountName) {
         this.accountName = accountName;
+    }
+
+    public String getCategoryName() {
+        return categoryName;
+    }
+
+    public void setCategoryName(String categoryName) {
+        this.categoryName = categoryName;
+    }
+
+    public String getCategoryIcon() {
+        return categoryIcon;
+    }
+
+    public void setCategoryIcon(String categoryIcon) {
+        this.categoryIcon = categoryIcon;
+    }
+
+    public String getParentCategoryName() {
+        return parentCategoryName;
+    }
+
+    public void setParentCategoryName(String parentCategoryName) {
+        this.parentCategoryName = parentCategoryName;
+    }
+
+    public String getParentCategoryIcon() {
+        return parentCategoryIcon;
+    }
+
+    public void setParentCategoryIcon(String parentCategoryIcon) {
+        this.parentCategoryIcon = parentCategoryIcon;
+    }
+
+    public String getRelatedAccountName() {
+        return relatedAccountName;
+    }
+
+    public void setRelatedAccountName(String relatedAccountName) {
+        this.relatedAccountName = relatedAccountName;
+    }
+
+    public String getRelatedAccountIcon() {
+        return relatedAccountIcon;
+    }
+
+    public void setRelatedAccountIcon(String relatedAccountIcon) {
+        this.relatedAccountIcon = relatedAccountIcon;
     }
 
     public List<EntryVO> getEntries() {
