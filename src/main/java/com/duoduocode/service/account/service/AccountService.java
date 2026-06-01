@@ -54,16 +54,17 @@ public class AccountService {
         for (Account account : accounts) {
             Map<String, Object> accountMap = convertToMap(account);
             String type = account.getType();
+            BigDecimal balance = account.getCurrentBalance() != null ? account.getCurrentBalance() : BigDecimal.ZERO;
 
             if ("asset".equals(type)) {
                 grouped.get("asset").add(accountMap);
-                totalAssets = totalAssets.add(account.getInitialBalance() != null ? account.getInitialBalance() : BigDecimal.ZERO);
+                totalAssets = totalAssets.add(balance);
             } else if ("liability".equals(type)) {
                 grouped.get("liability").add(accountMap);
-                totalLiabilities = totalLiabilities.add(account.getInitialBalance() != null ? account.getInitialBalance() : BigDecimal.ZERO);
+                totalLiabilities = totalLiabilities.add(balance);
             } else if ("investment".equals(type)) {
                 grouped.get("investment").add(accountMap);
-                totalInvestments = totalInvestments.add(account.getInitialBalance() != null ? account.getInitialBalance() : BigDecimal.ZERO);
+                totalInvestments = totalInvestments.add(balance);
             }
         }
 
@@ -339,6 +340,7 @@ public class AccountService {
         map.put("icon", account.getIcon());
         map.put("color", account.getColor());
         map.put("initialBalance", account.getInitialBalance());
+        map.put("currentBalance", account.getCurrentBalance());
         map.put("creditLimit", account.getCreditLimit());
         map.put("includeInNetWorth", account.getIncludeInNetWorth());
         map.put("allowTransfer", account.getAllowTransfer());

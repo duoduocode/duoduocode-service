@@ -17,6 +17,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@Tag("api")
 class TransactionControllerApiTest {
 
     private static final String BASE_URL = "http://localhost:8080";

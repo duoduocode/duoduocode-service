@@ -20,12 +20,22 @@
         <result column="is_deleted" property="isDeleted"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
+        <result column="current_balance" property="currentBalance"/>
     </resultMap>
 
     <sql id="Base_Column_List">
         id, user_id, name, type, icon, color, initial_balance, credit_limit,
         include_in_net_worth, allow_transfer, enable_alert, alert_threshold,
         sort_order, `desc`, is_deleted, created_at, updated_at
+    </sql>
+
+    <sql id="Dynamic_Balance_Sql">
+        COALESCE(a.initial_balance, 0) +
+        COALESCE((SELECT SUM(e.debit) - SUM(e.credit)
+            FROM entry e
+            INNER JOIN `transaction` t ON t.id = e.transaction_id AND t.is_deleted = 0
+            WHERE e.account_id = a.id AND e.account_type = 'account' AND e.is_deleted = 0), 0)
+        AS current_balance
     </sql>
 
     <!-- 插入账户 -->
@@ -64,27 +74,30 @@
 
     <!-- 根据ID查询账户 -->
     <select id="selectById" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM account
-        WHERE id = #{id} AND is_deleted = 0
+        SELECT <include refid="Base_Column_List"/>,
+            <include refid="Dynamic_Balance_Sql"/>
+        FROM account a
+        WHERE a.id = #{id} AND a.is_deleted = 0
     </select>
 
     <!-- 根据用户ID查询账户列表（含系统默认，排除隐藏） -->
     <select id="selectByUserId" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM account
-        WHERE (user_id IS NULL OR user_id = #{userId}) AND is_deleted = 0
-          AND id NOT IN (SELECT ref_id FROM user_data_hide WHERE user_id = #{userId} AND data_type = 'account')
-        ORDER BY user_id IS NOT NULL, updated_at DESC
+        SELECT <include refid="Base_Column_List"/>,
+            <include refid="Dynamic_Balance_Sql"/>
+        FROM account a
+        WHERE (a.user_id IS NULL OR a.user_id = #{userId}) AND a.is_deleted = 0
+          AND a.id NOT IN (SELECT ref_id FROM user_data_hide WHERE user_id = #{userId} AND data_type = 'account')
+        ORDER BY a.user_id IS NOT NULL, a.updated_at DESC
     </select>
 
     <!-- 根据用户ID和类型查询账户列表（含系统默认，排除隐藏） -->
     <select id="selectByUserIdAndType" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM account
-        WHERE (user_id IS NULL OR user_id = #{userId}) AND type = #{type} AND is_deleted = 0
-          AND id NOT IN (SELECT ref_id FROM user_data_hide WHERE user_id = #{userId} AND data_type = 'account')
-        ORDER BY user_id IS NOT NULL, updated_at DESC
+        SELECT <include refid="Base_Column_List"/>,
+            <include refid="Dynamic_Balance_Sql"/>
+        FROM account a
+        WHERE (a.user_id IS NULL OR a.user_id = #{userId}) AND a.type = #{type} AND a.is_deleted = 0
+          AND a.id NOT IN (SELECT ref_id FROM user_data_hide WHERE user_id = #{userId} AND data_type = 'account')
+        ORDER BY a.user_id IS NOT NULL, a.updated_at DESC
     </select>
 
     <!-- 检查账户名称是否存在（仅查用户自己的） -->

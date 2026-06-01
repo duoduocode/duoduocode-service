@@ -63,7 +63,7 @@ public class DashboardService {
         BigDecimal totalInvestments = BigDecimal.ZERO;
 
         for (Account account : accounts) {
-            BigDecimal balance = account.getInitialBalance() != null ? account.getInitialBalance() : BigDecimal.ZERO;
+            BigDecimal balance = account.getCurrentBalance() != null ? account.getCurrentBalance() : BigDecimal.ZERO;
             switch (account.getType()) {
                 case "asset":
                     totalAssets = totalAssets.add(balance);
@@ -186,7 +186,7 @@ public class DashboardService {
 
         for (Account account : accounts) {
             if (Boolean.TRUE.equals(account.getIncludeInNetWorth())) {
-                BigDecimal balance = account.getInitialBalance() != null ? account.getInitialBalance() : BigDecimal.ZERO;
+                BigDecimal balance = account.getCurrentBalance() != null ? account.getCurrentBalance() : BigDecimal.ZERO;
                 if ("asset".equals(account.getType()) || "investment".equals(account.getType())) {
                     currentNetWorth = currentNetWorth.add(balance);
                 } else if ("liability".equals(account.getType())) {

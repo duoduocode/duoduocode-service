@@ -88,6 +88,12 @@ public class Account {
      */
     private LocalDateTime updatedAt;
 
+    /**
+     * 动态余额（非数据库字段，由 entry 表聚合计算）
+     * 公式：initial_balance + SUM(debit) - SUM(credit)
+     */
+    private java.math.BigDecimal currentBalance;
+
     // Getters and Setters
 
     public Long getId() {
@@ -224,5 +230,13 @@ public class Account {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public java.math.BigDecimal getCurrentBalance() {
+        return currentBalance;
+    }
+
+    public void setCurrentBalance(java.math.BigDecimal currentBalance) {
+        this.currentBalance = currentBalance;
     }
 }
