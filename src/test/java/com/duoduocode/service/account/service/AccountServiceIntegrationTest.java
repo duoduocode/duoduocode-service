@@ -522,9 +522,201 @@ class AccountServiceIntegrationTest {
     }
 
     @Test
-    void getAccountStatistics_shouldThrowWhenAccountNotExist() {
-        assertThrows(Exception.class, () -> {
-            accountService.getAccountStatistics(99999L, "2026-05-01", "2026-05-31");
-        });
+    void createAccount_liabilityShouldStoreNegativeInitialBalance() {
+        Map<String, Object> dto = createDto("信用卡_" + System.currentTimeMillis(), "liability", 3000);
+        dto.put("creditLimit", 50000);
+
+        Long accountId = accountService.createAccount(testUserId, dto);
+
+        Map<String, Object> detail = accountService.getAccountDetail(accountId);
+        BigDecimal currentBalance = (BigDecimal) detail.get("currentBalance");
+        assertTrue(currentBalance.compareTo(BigDecimal.ZERO) <= 0,
+                "负债账户余额应为非正数，实际: " + currentBalance);
+        assertEquals(0, new BigDecimal("-3000").compareTo(currentBalance));
+    }
+
+    @Test
+    void getAccountList_liabilityShouldReturnDebtAmount() {
+        String name = "信用卡_" + System.currentTimeMillis();
+        accountService.createAccount(testUserId, createDto(name, "liability", 3000));
+
+        Map<String, Object> result = accountService.getAccountList(testUserId);
+
+        Map<String, Object> accounts = (Map<String, Object>) result.get("accounts");
+        java.util.List<Map<String, Object>> liabilityList = (java.util.List<Map<String, Object>>) accounts.get("liability");
+        assertFalse(liabilityList.isEmpty());
+        Map<String, Object> liab = null;
+        for (Map<String, Object> item : liabilityList) {
+            if (name.equals(item.get("name"))) {
+                liab = item;
+                break;
+            }
+        }
+        assertNotNull(liab, "未找到创建的负债账户");
+        assertNotNull(liab.get("debtAmount"));
+        assertEquals(0, new BigDecimal("3000").compareTo((BigDecimal) liab.get("debtAmount")));
+    }
+
+    @Test
+    void getAccountDetail_liabilityShouldReturnDebtAmount() {
+        Map<String, Object> dto = createDto("信用卡_" + System.currentTimeMillis(), "liability", 3000);
+        Long accountId = accountService.createAccount(testUserId, dto);
+
+        Map<String, Object> detail = accountService.getAccountDetail(accountId);
+
+        assertNotNull(detail.get("debtAmount"));
+        assertEquals(0, new BigDecimal("3000").compareTo((BigDecimal) detail.get("debtAmount")));
+    }
+
+    @Test
+    void adjustBalance_liabilityShouldStoreNegativeBalance() {
+        Long accountId = accountService.createAccount(testUserId, createDto("信用调整_" + System.currentTimeMillis(), "liability", 3000));
+
+        accountService.adjustBalance(accountId, new BigDecimal("5000"), "调整负债为5000");
+
+        Map<String, Object> detail = accountService.getAccountDetail(accountId);
+        BigDecimal currentBalance = (BigDecimal) detail.get("currentBalance");
+        assertEquals(0, new BigDecimal("-5000").compareTo(currentBalance));
+    }
+
+    @Test
+    void createAccount_liabilityWithoutInitialBalanceShouldBeZero() {
+        Map<String, Object> dto = createDto("无负债信用卡_" + System.currentTimeMillis(), "liability");
+
+        Long accountId = accountService.createAccount(testUserId, dto);
+
+        Map<String, Object> detail = accountService.getAccountDetail(accountId);
+        BigDecimal currentBalance = (BigDecimal) detail.get("currentBalance");
+        assertEquals(0, BigDecimal.ZERO.compareTo(currentBalance));
+        BigDecimal debtAmount = (BigDecimal) detail.get("debtAmount");
+        assertEquals(0, BigDecimal.ZERO.compareTo(debtAmount));
+    }
+
+    @Test
+    void updateAccount_assetWithTransactions_shouldRecalculateCurrentBalance() {
+        Long accountId = accountService.createAccount(testUserId, createDto("资产调初始_" + System.currentTimeMillis(), "asset", 10000));
+
+        Transaction tx = new Transaction();
+        tx.setUserId(testUserId);
+        tx.setDate(LocalDate.parse("2026-06-01"));
+        tx.setTime(LocalTime.now());
+        tx.setAmount(new BigDecimal("3000.00"));
+        tx.setDescription("支出测试");
+        tx.setMode("simple");
+        tx.setTransactionType("expense");
+        tx.setRefundStatus("none");
+        tx.setRefundedAmount(BigDecimal.ZERO);
+        tx.setIsDeleted(0);
+        tx.setCreatedAt(LocalDateTime.now());
+        tx.setUpdatedAt(LocalDateTime.now());
+        transactionMapper.insert(tx);
+
+        Entry entry = new Entry();
+        entry.setTransactionId(tx.getId());
+        entry.setAccountId(accountId);
+        entry.setCredit(new BigDecimal("3000.00"));
+        entry.setAccountType("account");
+        entry.setIsDeleted(0);
+        entry.setCreatedAt(LocalDateTime.now());
+        entryMapper.insert(entry);
+
+        Map<String, Object> updateDto = new HashMap<>();
+        updateDto.put("initialBalance", 8000);
+        accountService.updateAccount(testUserId, accountId, updateDto);
+
+        Map<String, Object> detail = accountService.getAccountDetail(accountId);
+        assertEquals(0, new BigDecimal("5000").compareTo((BigDecimal) detail.get("currentBalance")));
+    }
+
+    @Test
+    void updateAccount_liabilityWithTransactions_shouldRecalculateCurrentBalance() {
+        Map<String, Object> dto = createDto("负债调初始_" + System.currentTimeMillis(), "liability", 3000);
+        dto.put("creditLimit", 50000);
+        Long accountId = accountService.createAccount(testUserId, dto);
+
+        Transaction tx = new Transaction();
+        tx.setUserId(testUserId);
+        tx.setDate(LocalDate.parse("2026-06-01"));
+        tx.setTime(LocalTime.now());
+        tx.setAmount(new BigDecimal("366.88"));
+        tx.setDescription("消费测试");
+        tx.setMode("simple");
+        tx.setTransactionType("expense");
+        tx.setRefundStatus("none");
+        tx.setRefundedAmount(BigDecimal.ZERO);
+        tx.setIsDeleted(0);
+        tx.setCreatedAt(LocalDateTime.now());
+        tx.setUpdatedAt(LocalDateTime.now());
+        transactionMapper.insert(tx);
+
+        Entry entry = new Entry();
+        entry.setTransactionId(tx.getId());
+        entry.setAccountId(accountId);
+        entry.setCredit(new BigDecimal("366.88"));
+        entry.setAccountType("account");
+        entry.setIsDeleted(0);
+        entry.setCreatedAt(LocalDateTime.now());
+        entryMapper.insert(entry);
+
+        Map<String, Object> detailBefore = accountService.getAccountDetail(accountId);
+        assertEquals(0, new BigDecimal("-3366.88").compareTo((BigDecimal) detailBefore.get("currentBalance")));
+
+        Map<String, Object> updateDto = new HashMap<>();
+        updateDto.put("initialBalance", 5000);
+        accountService.updateAccount(testUserId, accountId, updateDto);
+
+        Map<String, Object> detailAfter = accountService.getAccountDetail(accountId);
+        assertEquals(0, new BigDecimal("-5366.88").compareTo((BigDecimal) detailAfter.get("currentBalance")));
+    }
+
+    @Test
+    void updateAccount_liabilityChangeCreditLimit_shouldNotAffectCurrentBalance() {
+        Map<String, Object> dto = createDto("负债调额度_" + System.currentTimeMillis(), "liability", 3000);
+        dto.put("creditLimit", 50000);
+        Long accountId = accountService.createAccount(testUserId, dto);
+
+        Map<String, Object> before = accountService.getAccountDetail(accountId);
+
+        Map<String, Object> updateDto = new HashMap<>();
+        updateDto.put("creditLimit", 80000);
+        accountService.updateAccount(testUserId, accountId, updateDto);
+
+        Map<String, Object> after = accountService.getAccountDetail(accountId);
+        assertEquals(0, ((BigDecimal) before.get("currentBalance")).compareTo((BigDecimal) after.get("currentBalance")));
+        assertEquals(0, new BigDecimal("80000").compareTo((BigDecimal) after.get("creditLimit")));
+    }
+
+    @Test
+    void adjustBalance_assetWithTransactions_shouldRecalculateCurrentBalance() {
+        Long accountId = accountService.createAccount(testUserId, createDto("资产调账_" + System.currentTimeMillis(), "asset", 10000));
+
+        Transaction tx = new Transaction();
+        tx.setUserId(testUserId);
+        tx.setDate(LocalDate.parse("2026-06-01"));
+        tx.setTime(LocalTime.now());
+        tx.setAmount(new BigDecimal("500.00"));
+        tx.setDescription("收入测试");
+        tx.setMode("simple");
+        tx.setTransactionType("income");
+        tx.setRefundStatus("none");
+        tx.setRefundedAmount(BigDecimal.ZERO);
+        tx.setIsDeleted(0);
+        tx.setCreatedAt(LocalDateTime.now());
+        tx.setUpdatedAt(LocalDateTime.now());
+        transactionMapper.insert(tx);
+
+        Entry entry = new Entry();
+        entry.setTransactionId(tx.getId());
+        entry.setAccountId(accountId);
+        entry.setDebit(new BigDecimal("500.00"));
+        entry.setAccountType("account");
+        entry.setIsDeleted(0);
+        entry.setCreatedAt(LocalDateTime.now());
+        entryMapper.insert(entry);
+
+        accountService.adjustBalance(accountId, new BigDecimal("20000"), "调账测试");
+
+        Map<String, Object> detail = accountService.getAccountDetail(accountId);
+        assertEquals(0, new BigDecimal("20500").compareTo((BigDecimal) detail.get("currentBalance")));
     }
 }

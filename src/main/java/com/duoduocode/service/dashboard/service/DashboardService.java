@@ -78,9 +78,9 @@ public class DashboardService {
         }
 
         vo.setTotalAssets(totalAssets);
-        vo.setTotalLiabilities(totalLiabilities);
+        vo.setTotalLiabilities(totalLiabilities.abs());
         vo.setTotalInvestments(totalInvestments);
-        vo.setNetWorth(totalAssets.add(totalInvestments).subtract(totalLiabilities));
+        vo.setNetWorth(totalAssets.add(totalInvestments).add(totalLiabilities));
         vo.setAccountCount(accounts.size());
 
         // 2. 上月净资产

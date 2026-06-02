@@ -2,6 +2,8 @@ package com.duoduocode.service.transaction.service;
 
 import com.duoduocode.service.account.entity.Account;
 import com.duoduocode.service.account.mapper.AccountMapper;
+import com.duoduocode.service.category.entity.Category;
+import com.duoduocode.service.category.mapper.CategoryMapper;
 import com.duoduocode.service.common.BusinessException;
 import com.duoduocode.service.common.ResultCode;
 import com.duoduocode.service.common.dto.PageResult;
@@ -37,6 +39,7 @@ public class TransactionService {
     private final TransactionMapper transactionMapper;
     private final EntryMapper entryMapper;
     private final AccountMapper accountMapper;
+    private final CategoryMapper categoryMapper;
 
     // 交易类型常量
     private static final String TYPE_EXPENSE = "expense";
@@ -442,9 +445,9 @@ public class TransactionService {
                 break;
 
             case TYPE_REPAYMENT:
-                // 还款：借-负债账户，贷-资产账户
                 validateRepaymentParams(dto);
-                entries.add(createEntry(transactionId, dto.getCategoryId(), amount, null, "account", now));
+                Long repayTargetId = dto.getCategoryId() != null ? dto.getCategoryId() : dto.getTargetAccountId();
+                entries.add(createEntry(transactionId, repayTargetId, amount, null, "account", now));
                 entries.add(createEntry(transactionId, dto.getAccountId(), null, amount, "account", now));
                 break;
 
@@ -630,7 +633,7 @@ public class TransactionService {
         if (dto.getAccountId() == null) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "还款交易必须指定资产账户");
         }
-        if (dto.getCategoryId() == null) {
+        if (dto.getCategoryId() == null && dto.getTargetAccountId() == null) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "还款交易必须指定负债账户");
         }
     }
@@ -638,71 +641,71 @@ public class TransactionService {
     // ===== 转换方法 =====
 
     /**
-     * 将实体转换为VO
+     * 将实体转换为VO，填充分类名称/图标、关联账户名称/图标等信息
      */
     private TransactionVO convertToVO(Transaction transaction) {
         TransactionVO vo = new TransactionVO();
         BeanUtils.copyProperties(transaction, vo);
 
-        // 查询分录
         List<Entry> entries = entryMapper.selectByTransactionId(transaction.getId());
         List<EntryVO> entryVOs = new ArrayList<>();
 
-        // 用于判断交易类型
-        Long accountId = null;
+        List<Long> accountIds = new ArrayList<>();
         Long categoryId = null;
-        String transactionType = null;
 
         for (Entry entry : entries) {
             EntryVO entryVO = new EntryVO();
             BeanUtils.copyProperties(entry, entryVO);
 
-            // 查询账户/分类名称
-            Account account = accountMapper.selectById(entry.getAccountId());
-            if (account != null) {
-                entryVO.setAccountName(account.getName());
-                entryVO.setAccountIcon(account.getIcon());
+            if ("category".equals(entry.getAccountType())) {
+                Category category = categoryMapper.selectById(entry.getAccountId());
+                if (category != null) {
+                    entryVO.setAccountName(category.getName());
+                    entryVO.setAccountIcon(category.getIcon());
+                    categoryId = category.getId();
+                }
+            } else {
+                Account account = accountMapper.selectById(entry.getAccountId());
+                if (account != null) {
+                    entryVO.setAccountName(account.getName());
+                    entryVO.setAccountIcon(account.getIcon());
+                    if (!accountIds.contains(account.getId())) {
+                        accountIds.add(account.getId());
+                    }
+                }
             }
 
             entryVOs.add(entryVO);
+        }
 
-            // 判断交易类型
-            if ("account".equals(entry.getAccountType())) {
-                if (entry.getDebit() != null && entry.getDebit().compareTo(BigDecimal.ZERO) > 0) {
-                    accountId = entry.getAccountId();
-                    if (transactionType == null) {
-                        transactionType = TYPE_INCOME; // 借-账户，可能是收入或转账目标
-                    }
-                }
-                if (entry.getCredit() != null && entry.getCredit().compareTo(BigDecimal.ZERO) > 0) {
-                    if (accountId == null) {
-                        accountId = entry.getAccountId();
-                    }
-                    if (transactionType == null || transactionType.equals(TYPE_INCOME)) {
-                        transactionType = TYPE_EXPENSE; // 贷-账户，可能是支出或转账源
-                    }
-                }
-            } else if ("category".equals(entry.getAccountType())) {
-                if (entry.getDebit() != null && entry.getDebit().compareTo(BigDecimal.ZERO) > 0) {
-                    categoryId = entry.getAccountId();
-                    transactionType = TYPE_EXPENSE; // 借-分类，支出
-                }
-                if (entry.getCredit() != null && entry.getCredit().compareTo(BigDecimal.ZERO) > 0) {
-                    categoryId = entry.getAccountId();
-                    transactionType = TYPE_INCOME; // 贷-分类，收入
+        vo.setEntries(entryVOs);
+
+        if (!accountIds.isEmpty()) {
+            Account primaryAccount = accountMapper.selectById(accountIds.get(0));
+            if (primaryAccount != null) {
+                vo.setAccountName(primaryAccount.getName());
+            }
+            if (accountIds.size() >= 2) {
+                Account relatedAccount = accountMapper.selectById(accountIds.get(1));
+                if (relatedAccount != null) {
+                    vo.setRelatedAccountName(relatedAccount.getName());
+                    vo.setRelatedAccountIcon(relatedAccount.getIcon());
                 }
             }
         }
 
-        vo.setEntries(entryVOs);
-        // 使用数据库中的原始 transactionType，而不是通过分录推断的值
-        // vo.setTransactionType(transactionType);
-
-        // 设置账户和分类名称
-        if (accountId != null) {
-            Account account = accountMapper.selectById(accountId);
-            if (account != null) {
-                vo.setAccountName(account.getName());
+        if (categoryId != null) {
+            Category category = categoryMapper.selectById(categoryId);
+            if (category != null) {
+                vo.setCategoryName(category.getName());
+                vo.setCategoryIcon(category.getIcon());
+                if (category.getParentId() != null && category.getParentId() > 0) {
+                    Category parentCategory = categoryMapper.selectById(category.getParentId());
+                    if (parentCategory != null) {
+                        vo.setParentCategoryName(parentCategory.getName());
+                        vo.setParentCategoryIcon(parentCategory.getIcon());
+                    }
+                }
             }
         }
 

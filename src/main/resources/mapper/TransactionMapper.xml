@@ -194,7 +194,6 @@
     <select id="searchTransactions" resultMap="BaseResultMap">
         SELECT <include refid="Transaction_Column_List"/>
         FROM `transaction` t
-        LEFT JOIN entry e ON t.id = e.transaction_id
         WHERE t.user_id = #{userId} AND t.is_deleted = 0
         <include refid="SearchWhereClause"/>
         ORDER BY
@@ -225,7 +224,6 @@
     <select id="countSearchTransactions" resultType="long">
         SELECT COUNT(DISTINCT t.id)
         FROM `transaction` t
-        LEFT JOIN entry e ON t.id = e.transaction_id
         WHERE t.user_id = #{userId} AND t.is_deleted = 0
         <include refid="SearchWhereClause"/>
     </select>
@@ -276,19 +274,26 @@
         <if test="query.endDate != null and query.endDate != ''">
             AND t.date &lt;= #{query.endDate}
         </if>
-        <!-- 交易类型筛选（按 expense/income） -->
+        <!-- 交易类型分录校验：expense/income 验分类分录方向，transfer/repayment 验账户分录存在 -->
         <if test="query.type != null and query.type != ''">
             AND EXISTS (
                 SELECT 1 FROM entry e4
                 WHERE e4.transaction_id = t.id
-                AND e4.account_type = 'category'
                 AND e4.is_deleted = 0
                 <choose>
                     <when test="query.type == 'expense'">
+                        AND e4.account_type = 'category'
                         AND e4.debit IS NOT NULL AND e4.debit &gt; 0
                     </when>
                     <when test="query.type == 'income'">
+                        AND e4.account_type = 'category'
                         AND e4.credit IS NOT NULL AND e4.credit &gt; 0
+                    </when>
+                    <when test="query.type == 'transfer'">
+                        AND e4.account_type = 'account'
+                    </when>
+                    <when test="query.type == 'repayment'">
+                        AND e4.account_type = 'account'
                     </when>
                 </choose>
             )

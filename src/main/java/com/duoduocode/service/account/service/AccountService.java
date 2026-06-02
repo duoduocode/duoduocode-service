@@ -77,11 +77,11 @@ public class AccountService {
         }
 
         // 计算净资产
-        BigDecimal netWorth = totalAssets.add(totalInvestments).subtract(totalLiabilities);
+        BigDecimal netWorth = totalAssets.add(totalInvestments).add(totalLiabilities);
 
         Map<String, Object> summary = new HashMap<>();
         summary.put("totalAssets", totalAssets);
-        summary.put("totalLiabilities", totalLiabilities);
+        summary.put("totalLiabilities", totalLiabilities.abs());
         summary.put("totalInvestments", totalInvestments);
         summary.put("netWorth", netWorth);
 
@@ -142,7 +142,11 @@ public class AccountService {
         account.setColor((String) dto.getOrDefault("color", "#07C160"));
 
         Object initialBalance = dto.get("initialBalance");
-        account.setInitialBalance(initialBalance != null ? new BigDecimal(initialBalance.toString()) : BigDecimal.ZERO);
+        BigDecimal ib = initialBalance != null ? new BigDecimal(initialBalance.toString()) : BigDecimal.ZERO;
+        if ("liability".equals(type) && ib.compareTo(BigDecimal.ZERO) > 0) {
+            ib = ib.negate();
+        }
+        account.setInitialBalance(ib);
 
         Object creditLimit = dto.get("creditLimit");
         account.setCreditLimit(creditLimit != null ? new BigDecimal(creditLimit.toString()) : null);
@@ -240,7 +244,14 @@ public class AccountService {
         }
         if (dto.containsKey("initialBalance")) {
             Object val = dto.get("initialBalance");
-            account.setInitialBalance(val != null ? new BigDecimal(val.toString()) : null);
+            BigDecimal ib = val != null ? new BigDecimal(val.toString()) : null;
+            if (ib != null && ib.compareTo(BigDecimal.ZERO) > 0) {
+                String updType = (String) dto.getOrDefault("type", account.getType());
+                if ("liability".equals(updType)) {
+                    ib = ib.negate();
+                }
+            }
+            account.setInitialBalance(ib);
         }
         if (dto.containsKey("creditLimit")) {
             Object val = dto.get("creditLimit");
@@ -380,6 +391,9 @@ public class AccountService {
         // 更新初始余额
         Account updateAccount = new Account();
         updateAccount.setId(accountId);
+        if ("liability".equals(account.getType()) && newBalance.compareTo(BigDecimal.ZERO) > 0) {
+            newBalance = newBalance.negate();
+        }
         updateAccount.setInitialBalance(newBalance);
         updateAccount.setUpdatedAt(LocalDateTime.now());
         accountMapper.updateById(updateAccount);
@@ -425,6 +439,16 @@ public class AccountService {
         map.put("initialBalance", account.getInitialBalance());
         map.put("currentBalance", account.getCurrentBalance());
         map.put("creditLimit", account.getCreditLimit());
+
+        if ("liability".equals(account.getType())) {
+            BigDecimal bal = account.getCurrentBalance() != null ? account.getCurrentBalance() : BigDecimal.ZERO;
+            BigDecimal debt = bal.compareTo(BigDecimal.ZERO) < 0 ? bal.negate() : BigDecimal.ZERO;
+            map.put("debtAmount", debt);
+            BigDecimal cl = account.getCreditLimit() != null ? account.getCreditLimit() : BigDecimal.ZERO;
+            BigDecimal excess = bal.compareTo(BigDecimal.ZERO) > 0 ? bal : BigDecimal.ZERO;
+            map.put("effectiveCreditLimit", cl.add(excess));
+        }
+
         map.put("includeInNetWorth", account.getIncludeInNetWorth());
         map.put("allowTransfer", account.getAllowTransfer());
         map.put("enableAlert", account.getEnableAlert());

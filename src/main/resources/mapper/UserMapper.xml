@@ -96,7 +96,7 @@
             COALESCE((SELECT SUM(
                 CASE
                     WHEN a.type = 'asset' OR a.type = 'investment' THEN COALESCE(a.initial_balance, 0)
-                    WHEN a.type = 'liability' THEN -COALESCE(a.initial_balance, 0)
+                    WHEN a.type = 'liability' THEN COALESCE(a.initial_balance, 0)
                     ELSE 0
                 END
             ) FROM account a

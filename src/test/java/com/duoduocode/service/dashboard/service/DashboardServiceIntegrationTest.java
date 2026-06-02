@@ -54,6 +54,9 @@ class DashboardServiceIntegrationTest {
         account.setType(type);
         account.setIcon("💰");
         account.setColor("#FF5733");
+        if ("liability".equals(type) && initialBalance.compareTo(BigDecimal.ZERO) > 0) {
+            initialBalance = initialBalance.negate();
+        }
         account.setInitialBalance(initialBalance);
         account.setCreditLimit(BigDecimal.ZERO);
         account.setIncludeInNetWorth(true);

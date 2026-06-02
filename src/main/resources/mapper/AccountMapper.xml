@@ -30,7 +30,10 @@
     </sql>
 
     <sql id="Dynamic_Balance_Sql">
-        COALESCE(a.initial_balance, 0) +
+        CASE WHEN a.type = 'liability'
+            THEN -ABS(COALESCE(a.initial_balance, 0))
+            ELSE COALESCE(a.initial_balance, 0)
+        END +
         COALESCE((SELECT SUM(e.debit) - SUM(e.credit)
             FROM entry e
             INNER JOIN `transaction` t ON t.id = e.transaction_id AND t.is_deleted = 0
@@ -112,12 +115,15 @@
 
     <!-- 计算账户当前余额 -->
     <select id="calculateCurrentBalance" resultType="java.math.BigDecimal">
-        SELECT COALESCE(a.initial_balance, 0) + COALESCE(SUM(e.debit), 0) - COALESCE(SUM(e.credit), 0)
+        SELECT CASE WHEN a.type = 'liability'
+            THEN -ABS(COALESCE(a.initial_balance, 0))
+            ELSE COALESCE(a.initial_balance, 0)
+        END + COALESCE(SUM(e.debit), 0) - COALESCE(SUM(e.credit), 0)
         FROM account a
         LEFT JOIN entry e ON e.account_id = a.id AND e.account_type = 'account'
         LEFT JOIN `transaction` t ON t.id = e.transaction_id AND t.is_deleted = 0
         WHERE a.id = #{accountId} AND a.is_deleted = 0
-        GROUP BY a.id, a.initial_balance
+        GROUP BY a.id, a.type, a.initial_balance
     </select>
 
     <!-- 软删除账户 -->
