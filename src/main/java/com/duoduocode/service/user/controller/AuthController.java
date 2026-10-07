@@ -122,10 +122,12 @@ public class AuthController {
 
         Long userId = ((Number) userIdObj).longValue();
 
-        User user = userMapper.selectById(userId);
+        // 按 openid 幂等查找，避免同一虚拟用户重复插入触发唯一键冲突
+        String openid = "dev_openid_" + userId;
+        User user = userMapper.selectByOpenid(openid);
         if (user == null) {
             user = new User();
-            user.setOpenid("dev_openid_" + userId);
+            user.setOpenid(openid);
             user.setNickname("DevUser" + userId);
             user.setGender(0);
             user.setStatus(1);
@@ -133,9 +135,9 @@ public class AuthController {
             user.setCreatedAt(java.time.LocalDateTime.now());
             user.setUpdatedAt(java.time.LocalDateTime.now());
             userMapper.insert(user);
-            userId = user.getId();
-            log.info("dev环境自动创建用户, userId={}", userId);
+            log.info("dev环境自动创建用户, userId={}", user.getId());
         }
+        userId = user.getId();
 
         String token = jwtUtils.generateToken(userId);
 

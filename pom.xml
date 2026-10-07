@@ -16,7 +16,7 @@
     <version>1.0.0</version>
     <packaging>jar</packaging>
     <name>duoduocode-service</name>
-    <description>多多代码服务端</description>
+    <description>多多记账服务端</description>
 
     <properties>
         <java.version>8</java.version>
