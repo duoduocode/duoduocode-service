@@ -21,6 +21,17 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 处理带 HTTP 状态的异常（R003 新端点参数/权限校验）：状态码透传，body 仍为 Result 结构
+     */
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public org.springframework.http.ResponseEntity<Result<Void>> handleResponseStatus(
+            org.springframework.web.server.ResponseStatusException e) {
+        org.springframework.http.HttpStatus status = e.getStatus();
+        return org.springframework.http.ResponseEntity.status(status)
+                .body(Result.fail(status.value(), e.getReason()));
+    }
+
+    /**
      * 处理其他异常
      */
     @ExceptionHandler(Exception.class)

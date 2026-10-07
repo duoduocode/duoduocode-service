@@ -3,7 +3,9 @@ package com.duoduocode.service.budget.controller;
 import com.duoduocode.service.budget.dto.*;
 import com.duoduocode.service.budget.service.BudgetCarryoverService;
 import com.duoduocode.service.budget.service.BudgetService;
+import com.duoduocode.service.common.BusinessException;
 import com.duoduocode.service.common.Result;
+import com.duoduocode.service.common.WebExceptions;
 import com.duoduocode.service.security.SecurityContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -93,6 +95,22 @@ public class BudgetController {
         Long userId = SecurityContext.requireUserId();
         Long id = budgetCarryoverService.carryoverBudget(userId, dto);
         return Result.success("结转成功", id);
+    }
+
+    /**
+     * R003 批量结转：多分类一次性结转上月剩余预算
+     * POST /v1/budgets/daily/carryover/batch
+     */
+    @PostMapping("/daily/carryover/batch")
+    @Operation(summary = "批量结转", description = "多分类一次性结转上月剩余预算；fromMonth 仅允许上一个月，单类失败不影响其他类")
+    public Result<BatchCarryoverVO> carryoverBatch(
+            @Parameter(description = "结转项列表") @RequestBody BatchCarryoverDTO dto) {
+        Long userId = SecurityContext.requireUserId();
+        try {
+            return Result.success("批量结转完成", budgetCarryoverService.carryoverBatch(userId, dto));
+        } catch (BusinessException e) {
+            throw WebExceptions.fromBusiness(e);
+        }
     }
 
     /**

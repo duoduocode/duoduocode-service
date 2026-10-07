@@ -1,5 +1,7 @@
 package com.duoduocode.service.budget.service;
 
+import com.duoduocode.service.budget.dto.BatchCarryoverDTO;
+import com.duoduocode.service.budget.dto.BatchCarryoverVO;
 import com.duoduocode.service.budget.dto.CarryoverDTO;
 import com.duoduocode.service.budget.entity.BudgetCarryover;
 import com.duoduocode.service.budget.entity.DailyBudget;
@@ -92,6 +94,59 @@ public class BudgetCarryoverService {
     }
 
     /**
+     * R003 批量结转：fromMonth 统一取上月（整批一致，格式/月份不符即 400），
+     * 逐项复用 carryoverBudget；可结余额不足/已结转过的单项失败不中断整批。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public BatchCarryoverVO carryoverBatch(Long userId, BatchCarryoverDTO dto) {
+        List<BatchCarryoverDTO.Item> items = dto == null ? null : dto.getItems();
+        if (items == null || items.isEmpty()) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "items 不能为空");
+        }
+        String fromMonth = YearMonth.now().minusMonths(1).toString();
+        String toMonth = YearMonth.now().toString();
+
+        BatchCarryoverVO vo = new BatchCarryoverVO();
+        for (BatchCarryoverDTO.Item item : items) {
+            if (item == null || item.getFromMonth() == null
+                    || !fromMonth.equals(item.getFromMonth().trim())) {
+                throw new BusinessException(ResultCode.PARAM_ERROR,
+                        "fromMonth 仅允许上一个月: " + fromMonth);
+            }
+            try {
+                carryoverItem(userId, item, fromMonth, toMonth, vo);
+            } catch (BusinessException e) {
+                vo.setFailCount(vo.getFailCount() + 1);
+                vo.getFailures().add(new BatchCarryoverVO.Failure(
+                        item.getCategoryId(), e.getMessage()));
+            }
+        }
+        return vo;
+    }
+
+    private void carryoverItem(Long userId, BatchCarryoverDTO.Item item,
+                               String fromMonth, String toMonth, BatchCarryoverVO vo) {
+        if (item.getCategoryId() == null) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "categoryId 不能为空");
+        }
+        if (item.getAmount() == null || item.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "结转金额必须大于0");
+        }
+        BigDecimal available = calculateCarryoverAmount(userId, item.getCategoryId(), fromMonth);
+        if (item.getAmount().compareTo(available) > 0) {
+            throw new BusinessException(ResultCode.BUSINESS_ERROR,
+                    "超过可结转额 ¥" + available.stripTrailingZeros().toPlainString());
+        }
+        CarryoverDTO single = new CarryoverDTO();
+        single.setCategoryId(item.getCategoryId());
+        single.setFromMonth(fromMonth);
+        single.setToMonth(toMonth);
+        single.setCarryoverAmount(item.getAmount());
+        carryoverBudget(userId, single);
+        vo.setSuccessCount(vo.getSuccessCount() + 1);
+    }
+
+    /**
      * 获取结转历史
      *
      * @param userId 用户ID
@@ -162,8 +217,15 @@ public class BudgetCarryoverService {
             usedAmount = BigDecimal.ZERO;
         }
 
+        // R003：扣除该来源月已结转金额（可结余 = 预算 - 已花 - 已结转）
+        BigDecimal carriedAmount = budgetCarryoverMapper.sumCarryoverAmountByCategoryIdAndFromMonth(
+                userId, categoryId, fromMonth);
+        if (carriedAmount == null) {
+            carriedAmount = BigDecimal.ZERO;
+        }
+
         // 计算剩余预算
-        BigDecimal remainingBudget = monthlyBudget.subtract(usedAmount);
+        BigDecimal remainingBudget = monthlyBudget.subtract(usedAmount).subtract(carriedAmount);
 
         // 可结转金额 = 剩余预算（如果为正数）
         return remainingBudget.compareTo(BigDecimal.ZERO) > 0 ? remainingBudget : BigDecimal.ZERO;

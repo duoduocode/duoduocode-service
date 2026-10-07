@@ -54,6 +54,13 @@
         WHERE category_id = #{categoryId} AND to_month = #{toMonth}
     </select>
 
+    <!-- 计算某分类某来源月份的总结转金额 -->
+    <select id="sumCarryoverAmountByCategoryIdAndFromMonth" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(carryover_amount), 0)
+        FROM budget_carryover
+        WHERE user_id = #{userId} AND category_id = #{categoryId} AND from_month = #{fromMonth}
+    </select>
+
     <!-- 根据ID删除结转记录 -->
     <delete id="deleteById">
         DELETE FROM budget_carryover

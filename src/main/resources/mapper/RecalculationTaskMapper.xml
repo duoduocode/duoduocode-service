@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.duoduocode.service.recalculation.mapper.RecalculationTaskMapper">
+
+    <resultMap id="BaseResultMap" type="com.duoduocode.service.recalculation.entity.RecalculationTask">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="task_type" property="taskType"/>
+        <result column="status" property="status"/>
+        <result column="total_count" property="totalCount"/>
+        <result column="success_count" property="successCount"/>
+        <result column="fail_count" property="failCount"/>
+        <result column="failure_detail" property="failureDetail"/>
+        <result column="error_msg" property="errorMsg"/>
+        <result column="ref_id" property="refId"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="started_at" property="startedAt"/>
+        <result column="finished_at" property="finishedAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, task_type, status, total_count, success_count, fail_count,
+        failure_detail, error_msg, ref_id, created_at, started_at, finished_at
+    </sql>
+
+    <insert id="insert" parameterType="com.duoduocode.service.recalculation.entity.RecalculationTask"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO recalculation_task (
+            user_id, task_type, status, total_count, created_at, started_at
+        ) VALUES (
+            #{userId}, #{taskType}, COALESCE(#{status}, 'running'), COALESCE(#{totalCount}, 0),
+            NOW(), NOW()
+        )
+    </insert>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM recalculation_task
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectStale" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM recalculation_task
+        WHERE status IN ('pending', 'running')
+          AND created_at &lt; #{cutoff}
+    </select>
+
+    <update id="markRunning">
+        UPDATE recalculation_task
+        SET status = 'running', started_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="markSucceeded">
+        UPDATE recalculation_task
+        SET status = 'succeeded', finished_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="markFailed">
+        UPDATE recalculation_task
+        SET status = 'failed', error_msg = #{errorMsg}, finished_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateProgress">
+        UPDATE recalculation_task
+        SET success_count = #{successCount}, fail_count = #{failCount},
+            failure_detail = #{failureDetail}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateRefId">
+        UPDATE recalculation_task
+        SET ref_id = #{refId}
+        WHERE id = #{id}
+    </update>
+
+</mapper>

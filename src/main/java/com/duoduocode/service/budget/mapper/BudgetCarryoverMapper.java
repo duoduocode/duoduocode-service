@@ -36,6 +36,10 @@ public interface BudgetCarryoverMapper {
     BigDecimal sumCarryoverAmountByCategoryIdAndToMonth(@Param("categoryId") Long categoryId, @Param("toMonth") String toMonth);
 
     /**
+     * 计算某分类某来源月份的总结转金�?     */
+    BigDecimal sumCarryoverAmountByCategoryIdAndFromMonth(@Param("userId") Long userId, @Param("categoryId") Long categoryId, @Param("fromMonth") String fromMonth);
+
+    /**
      * 根据ID删除结转记录
      */
     int deleteById(@Param("id") Long id);
