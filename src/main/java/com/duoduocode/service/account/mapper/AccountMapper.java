@@ -50,4 +50,16 @@ public interface AccountMapper {
     /**
      * 软删除账�?     */
     int softDeleteById(@Param("id") Long id);
+
+    /**
+     * 显式更新账单日/还款日（支持置 NULL 清空）
+     */
+    int updateRepaymentConfig(@Param("id") Long id,
+                              @Param("billDay") Integer billDay,
+                              @Param("repaymentDay") Integer repaymentDay);
+
+    /**
+     * 扫描所有设置了还款日的负债账户（含动态余额，跨用户，供每日扫描）
+     */
+    List<Account> selectLiabilityWithRepayment();
 }

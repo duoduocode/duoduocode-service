@@ -57,4 +57,21 @@
         WHERE user_id = #{userId} AND category_id = #{categoryId} AND month = #{month} AND is_deleted = 0
     </select>
 
+    <!-- 跨用户按月查询预算（每日兜底扫描用） -->
+    <select id="selectByMonth" resultMap="BaseResultMap">
+        SELECT id, user_id, category_id, month, monthly_budget, weekly_budget, alert_threshold,
+               is_deleted, created_at, updated_at
+        FROM budget_daily
+        WHERE month = #{month} AND is_deleted = 0
+    </select>
+
+    <!-- 导出备份：全部月份每日预算 -->
+    <select id="selectAllByUserId" resultMap="BaseResultMap">
+        SELECT id, user_id, category_id, month, monthly_budget, weekly_budget, alert_threshold,
+               is_deleted, created_at, updated_at
+        FROM budget_daily
+        WHERE user_id = #{userId}
+        ORDER BY month ASC, category_id ASC
+    </select>
+
 </mapper>

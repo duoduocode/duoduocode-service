@@ -64,6 +64,21 @@ public class TransactionDTO {
      */
     private List<EntryDTO> entries;
 
+    /**
+     * 待办落账溯源：来源周期模板ID（落账后自动推进模板并消化待办）
+     */
+    private Long sourceTemplateId;
+
+    /**
+     * 导入溯源：来源账单交易单号
+     */
+    private String externalOrderNo;
+
+    /**
+     * 导入溯源：导入批次ID（服务端注入，客户端不传）
+     */
+    private Long importBatchId;
+
     // Getters and Setters
 
     public LocalDate getDate() {
@@ -144,5 +159,29 @@ public class TransactionDTO {
 
     public void setEntries(List<EntryDTO> entries) {
         this.entries = entries;
+    }
+
+    public Long getSourceTemplateId() {
+        return sourceTemplateId;
+    }
+
+    public void setSourceTemplateId(Long sourceTemplateId) {
+        this.sourceTemplateId = sourceTemplateId;
+    }
+
+    public String getExternalOrderNo() {
+        return externalOrderNo;
+    }
+
+    public void setExternalOrderNo(String externalOrderNo) {
+        this.externalOrderNo = externalOrderNo;
+    }
+
+    public Long getImportBatchId() {
+        return importBatchId;
+    }
+
+    public void setImportBatchId(Long importBatchId) {
+        this.importBatchId = importBatchId;
     }
 }

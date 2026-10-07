@@ -65,6 +65,11 @@ public enum ResultCode {
     PAY_ERROR(30030, "支付失败"),
     REFUND_ERROR(30031, "退款失败"),
 
+    // ==================== 导入/消息错误 4xxxx ====================
+    IMPORT_FILE_INVALID(40001, "导入文件无效（非账单CSV/损坏/超限）"),
+    IMPORT_FORMAT_UNRECOGNIZED(40002, "账单格式无法识别"),
+    NOTIFICATION_NOT_FOUND(40003, "消息不存在"),
+
     // ==================== 服务端错误 5xxxx ====================
     INTERNAL_ERROR(50000, "服务器内部错误"),
     DATABASE_ERROR(50001, "数据库操作失败"),

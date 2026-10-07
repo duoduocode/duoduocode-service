@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.duoduocode.service.billimport.mapper.ImportBatchMapper">
+
+    <insert id="insert" parameterType="com.duoduocode.service.billimport.ImportBatch" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO import_batch (
+            user_id, source, file_name, total_rows, imported_count, skipped_count,
+            ignored_count, created_accounts, status, created_at
+        ) VALUES (
+            #{userId}, #{source}, #{fileName}, #{totalRows}, #{importedCount}, #{skippedCount},
+            #{ignoredCount}, #{createdAccounts}, #{status}, NOW()
+        )
+    </insert>
+
+    <update id="updateCounts">
+        UPDATE import_batch
+        SET imported_count = #{importedCount},
+            skipped_count = #{skippedCount},
+            ignored_count = #{ignoredCount},
+            created_accounts = #{createdAccounts}
+        WHERE id = #{id}
+    </update>
+
+</mapper>

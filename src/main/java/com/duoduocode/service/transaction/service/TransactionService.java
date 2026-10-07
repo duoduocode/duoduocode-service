@@ -2,11 +2,13 @@ package com.duoduocode.service.transaction.service;
 
 import com.duoduocode.service.account.entity.Account;
 import com.duoduocode.service.account.mapper.AccountMapper;
+import com.duoduocode.service.budget.service.BudgetNoticeChecker;
 import com.duoduocode.service.category.entity.Category;
 import com.duoduocode.service.category.mapper.CategoryMapper;
 import com.duoduocode.service.common.BusinessException;
 import com.duoduocode.service.common.ResultCode;
 import com.duoduocode.service.common.dto.PageResult;
+import com.duoduocode.service.recurring.service.RecurringTemplateService;
 import com.duoduocode.service.transaction.dto.*;
 import com.duoduocode.service.transaction.entity.Entry;
 import com.duoduocode.service.transaction.entity.Transaction;
@@ -40,6 +42,8 @@ public class TransactionService {
     private final EntryMapper entryMapper;
     private final AccountMapper accountMapper;
     private final CategoryMapper categoryMapper;
+    private final BudgetNoticeChecker budgetNoticeChecker;
+    private final RecurringTemplateService recurringTemplateService;
 
     // 交易类型常量
     private static final String TYPE_EXPENSE = "expense";
@@ -145,6 +149,9 @@ public class TransactionService {
         transaction.setTransactionType(dto.getTransactionType() != null ? dto.getTransactionType() : TYPE_EXPENSE);
         transaction.setRefundStatus(REFUND_NONE);
         transaction.setRefundedAmount(BigDecimal.ZERO);
+        transaction.setSourceTemplateId(dto.getSourceTemplateId());
+        transaction.setExternalOrderNo(dto.getExternalOrderNo());
+        transaction.setImportBatchId(dto.getImportBatchId());
         transaction.setIsDeleted(0);
         transaction.setCreatedAt(LocalDateTime.now());
         transaction.setUpdatedAt(LocalDateTime.now());
@@ -161,6 +168,14 @@ public class TransactionService {
             // 简化模式：根据交易类型自动生成分录
             createSimpleModeEntries(transactionId, dto);
         }
+
+        // R002 待办闭环：带 sourceTemplateId 落账 → 同事务推进模板并消化待办
+        if (dto.getSourceTemplateId() != null) {
+            recurringTemplateService.triggerTemplate(dto.getSourceTemplateId());
+        }
+
+        // R002 预算实时钩子：事务提交后按分类补查使用率（失败只记日志，不影响记账）
+        budgetNoticeChecker.checkAfterTransaction(userId, categoryIdsOf(dto));
 
         return transactionId;
     }
@@ -187,6 +202,10 @@ public class TransactionService {
         // 验证参数
         validateTransactionDTO(dto);
 
+        // R002：删除前记下旧分录涉及分类（编辑后预算使用率双向变化）
+        List<Long> affectedCategoryIds = entryCategoryIds(entryMapper.selectByTransactionId(id));
+        mergeCategoryIds(affectedCategoryIds, categoryIdsOf(dto));
+
         // 更新交易
         Transaction transaction = new Transaction();
         transaction.setId(id);
@@ -208,6 +227,9 @@ public class TransactionService {
         } else {
             createSimpleModeEntries(id, dto);
         }
+
+        // R002 预算实时钩子：新旧分类并集补查
+        budgetNoticeChecker.checkAfterTransaction(existing.getUserId(), affectedCategoryIds);
     }
 
     /**
@@ -222,8 +244,14 @@ public class TransactionService {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND, "交易不存在");
         }
 
+        // R002：删除前记下分录涉及分类
+        List<Long> affectedCategoryIds = entryCategoryIds(entryMapper.selectByTransactionId(id));
+
         // 软删除交易
         transactionMapper.softDeleteById(id);
+
+        // R002 预算实时钩子
+        budgetNoticeChecker.checkAfterTransaction(transaction.getUserId(), affectedCategoryIds);
     }
 
     /**
@@ -275,6 +303,14 @@ public class TransactionService {
 
         if (refundAmount.compareTo(maxRefundable) > 0) {
             throw new BusinessException(ResultCode.BUSINESS_ERROR, "退款金额超过可退金额，最多可退: " + maxRefundable);
+        }
+
+        // R003：指定退款去向账户时，校验账户存在、未删除且属于本人
+        if (dto.getAccountId() != null) {
+            Account refundAccount = accountMapper.selectById(dto.getAccountId());
+            if (refundAccount == null || !transaction.getUserId().equals(refundAccount.getUserId())) {
+                throw new BusinessException(ResultCode.DATA_NOT_FOUND, "退款去向账户不存在");
+            }
         }
 
         // 6. 计算新的退款状态
@@ -508,6 +544,53 @@ public class TransactionService {
         entryMapper.batchInsert(entries);
     }
 
+    // ===== R002 预算钩子分类收集 =====
+
+    /**
+     * 交易 DTO 涉及的分类：full 模式取分录 accountType=category 项，simple 模式取 categoryId
+     */
+    private List<Long> categoryIdsOf(TransactionDTO dto) {
+        List<Long> ids = new ArrayList<>();
+        if (dto.getEntries() != null) {
+            for (EntryDTO entryDTO : dto.getEntries()) {
+                if ("category".equals(entryDTO.getAccountType())) {
+                    mergeCategoryIds(ids, java.util.Collections.singletonList(entryDTO.getAccountId()));
+                }
+            }
+        }
+        mergeCategoryIds(ids, java.util.Collections.singletonList(dto.getCategoryId()));
+        return ids;
+    }
+
+    /**
+     * 既有分录涉及的分类
+     */
+    private List<Long> entryCategoryIds(List<Entry> entries) {
+        List<Long> ids = new ArrayList<>();
+        if (entries != null) {
+            for (Entry entry : entries) {
+                if ("category".equals(entry.getAccountType())) {
+                    mergeCategoryIds(ids, java.util.Collections.singletonList(entry.getAccountId()));
+                }
+            }
+        }
+        return ids;
+    }
+
+    /**
+     * 去重合并（忽略 null）
+     */
+    private void mergeCategoryIds(List<Long> target, List<Long> source) {
+        if (source == null) {
+            return;
+        }
+        for (Long id : source) {
+            if (id != null && !target.contains(id)) {
+                target.add(id);
+            }
+        }
+    }
+
     /**
      * 创建退款分录（反向分录）
      */
@@ -596,6 +679,12 @@ public class TransactionService {
     private void validateTransactionDTO(TransactionDTO dto) {
         if (dto.getAmount() == null || dto.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "交易金额必须大于0");
+        }
+        // 类型校验必须先于 insert：transaction_type 为 DB enum，非法值落库会触发 SQLException
+        String type = dto.getTransactionType();
+        if (type != null && !TYPE_EXPENSE.equals(type) && !TYPE_INCOME.equals(type)
+                && !TYPE_TRANSFER.equals(type) && !TYPE_REPAYMENT.equals(type)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "无效的交易类型: " + type);
         }
     }
 

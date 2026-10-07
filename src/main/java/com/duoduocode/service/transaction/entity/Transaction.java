@@ -67,6 +67,21 @@ public class Transaction {
     private BigDecimal netAmount;
 
     /**
+     * 待办落账溯源：来源周期模板ID
+     */
+    private Long sourceTemplateId;
+
+    /**
+     * 导入溯源：来源账单交易单号
+     */
+    private String externalOrderNo;
+
+    /**
+     * 导入溯源：导入批次ID
+     */
+    private Long importBatchId;
+
+    /**
      * 软删除标记
      */
     private Integer isDeleted;
@@ -169,6 +184,30 @@ public class Transaction {
 
     public void setNetAmount(BigDecimal netAmount) {
         this.netAmount = netAmount;
+    }
+
+    public Long getSourceTemplateId() {
+        return sourceTemplateId;
+    }
+
+    public void setSourceTemplateId(Long sourceTemplateId) {
+        this.sourceTemplateId = sourceTemplateId;
+    }
+
+    public String getExternalOrderNo() {
+        return externalOrderNo;
+    }
+
+    public void setExternalOrderNo(String externalOrderNo) {
+        this.externalOrderNo = externalOrderNo;
+    }
+
+    public Long getImportBatchId() {
+        return importBatchId;
+    }
+
+    public void setImportBatchId(Long importBatchId) {
+        this.importBatchId = importBatchId;
     }
 
     public Integer getIsDeleted() {

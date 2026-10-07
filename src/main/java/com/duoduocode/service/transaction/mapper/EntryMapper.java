@@ -7,12 +7,18 @@ import org.apache.ibatis.annotations.Param;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 分录 Mapper 接口
  */
 @Mapper
 public interface EntryMapper {
+
+    /**
+     * 导出用：按交易ID列表查分录并联账户/分类名称
+     */
+    List<Map<String, Object>> selectExportRowsByTransactionIds(@Param("transactionIds") List<Long> transactionIds);
 
     /**
      * 插入分录

@@ -41,6 +41,8 @@ CREATE TABLE IF NOT EXISTS `account` (
     `allow_transfer` TINYINT(1) DEFAULT 1 COMMENT '是否允许转账',
     `enable_alert` TINYINT(1) DEFAULT 0 COMMENT '是否启用余额预警',
     `alert_threshold` DECIMAL(15, 2) DEFAULT 0.00 COMMENT '预警阈值',
+    `bill_day` TINYINT DEFAULT NULL COMMENT '账单日 1-31（负债账户）',
+    `repayment_day` TINYINT DEFAULT NULL COMMENT '还款日 1-31（负债账户）',
     `sort_order` INT DEFAULT 0 COMMENT '排序',
     `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '软删除标记',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -66,6 +68,9 @@ CREATE TABLE IF NOT EXISTS `transaction` (
     `refund_status` VARCHAR(20) DEFAULT 'none' COMMENT '退款状态：none-无退款, partial-部分退款, full-全额退款',
     `refunded_amount` DECIMAL(16, 2) DEFAULT 0.00 COMMENT '已退款金额',
     `net_amount` DECIMAL(16, 2) DEFAULT 0.00 COMMENT '净金额',
+    `source_template_id` BIGINT DEFAULT NULL COMMENT '来源周期模板ID（待办闭环）',
+    `external_order_no` VARCHAR(64) DEFAULT NULL COMMENT '导入来源账单交易单号',
+    `import_batch_id` BIGINT DEFAULT NULL COMMENT '导入批次ID',
     `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '软删除标记',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -75,6 +80,7 @@ CREATE TABLE IF NOT EXISTS `transaction` (
     KEY `idx_user_date` (`user_id`, `date`),
     KEY `idx_refund_status` (`refund_status`),
     KEY `idx_created_at` (`created_at`),
+    KEY `idx_user_order` (`user_id`, `external_order_no`),
     CONSTRAINT `fk_transaction_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='交易表';
 
@@ -275,8 +281,8 @@ CREATE TABLE IF NOT EXISTS `recurring_template` (
     PRIMARY KEY (`id`),
     KEY `idx_user_id` (`user_id`),
     KEY `idx_status` (`status`),
-    KEY `idx_next_due_date` (`next_due_date`),
-    KEY `idx_user_status_due` (`user_id`, `status`, `next_due_date`),
+    KEY `idx_next_trigger` (`next_trigger_date`),
+    KEY `idx_user_status_due` (`user_id`, `status`, `next_trigger_date`),
     CONSTRAINT `fk_recurring_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
     CONSTRAINT `fk_recurring_category` FOREIGN KEY (`category_id`) REFERENCES `category` (`id`) ON DELETE SET NULL,
     CONSTRAINT `fk_recurring_account` FOREIGN KEY (`account_id`) REFERENCES `account` (`id`) ON DELETE SET NULL
@@ -324,6 +330,43 @@ CREATE TABLE IF NOT EXISTS `user_data_hide` (
     UNIQUE KEY `uk_user_type_ref` (`user_id`, `data_type`, `ref_id`),
     KEY `idx_user_id` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户数据隐藏表';
+
+-- 站内消息/待办表（R002）
+CREATE TABLE IF NOT EXISTS `notification` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `msg_type` VARCHAR(10) NOT NULL COMMENT 'todo-待办, notice-通知',
+    `type` VARCHAR(30) NOT NULL COMMENT '业务类型：recurring_due/budget_warning/budget_exceeded/repayment_due',
+    `title` VARCHAR(100) NOT NULL COMMENT '标题',
+    `content` VARCHAR(500) DEFAULT NULL COMMENT '摘要',
+    `ref_type` VARCHAR(20) DEFAULT NULL COMMENT '关联对象：template/category/account',
+    `ref_id` BIGINT DEFAULT NULL COMMENT '关联对象ID',
+    `dedup_key` VARCHAR(100) NOT NULL COMMENT '幂等键',
+    `status` VARCHAR(20) NOT NULL DEFAULT 'unread' COMMENT 'unread/read/digested',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `read_at` DATETIME DEFAULT NULL,
+    `digested_at` DATETIME DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_dedup` (`user_id`, `dedup_key`),
+    KEY `idx_user_status_time` (`user_id`, `status`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='站内消息/待办';
+
+-- 账单导入批次表（R002，日志性质，不做软删）
+CREATE TABLE IF NOT EXISTS `import_batch` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `source` VARCHAR(20) NOT NULL COMMENT 'alipay/wechat',
+    `file_name` VARCHAR(200) DEFAULT NULL,
+    `total_rows` INT NOT NULL DEFAULT 0,
+    `imported_count` INT NOT NULL DEFAULT 0,
+    `skipped_count` INT NOT NULL DEFAULT 0 COMMENT '判重跳过',
+    `ignored_count` INT NOT NULL DEFAULT 0 COMMENT '不计收支/非法行',
+    `created_accounts` VARCHAR(500) DEFAULT NULL COMMENT '自动创建的账户名,逗号分隔',
+    `status` VARCHAR(20) NOT NULL DEFAULT 'confirmed' COMMENT 'confirmed/failed',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_user_created` (`user_id`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='账单导入批次';
 
 -- ============================================================
 -- 系统默认数据初始化（user_id=NULL 表示属于系统）
@@ -519,3 +562,40 @@ SELECT NULL, '其他退款',   'income', '🔙', id, 4, 0, NOW() FROM category W
 -- 其他收入子类
 INSERT INTO category (user_id, name, type, icon, parent_id, sort_order, is_deleted, created_at)
 SELECT NULL, '其他收入', 'income', '🔧', id, 1, 0, NOW() FROM category WHERE user_id IS NULL AND name='其他收入' AND type='income';
+
+-- R003 批量誊录异步任务（与 db/r003-incremental.sql 保持一致）
+CREATE TABLE IF NOT EXISTS `recalculation_task` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `task_type` VARCHAR(20) NOT NULL COMMENT 'batch_confirm/import',
+    `status` VARCHAR(20) NOT NULL DEFAULT 'pending' COMMENT 'pending/running/succeeded/failed',
+    `total_count` INT NOT NULL DEFAULT 0,
+    `success_count` INT NOT NULL DEFAULT 0,
+    `fail_count` INT NOT NULL DEFAULT 0,
+    `failure_detail` TEXT DEFAULT NULL COMMENT '失败明细JSON [{id,reason}]',
+    `error_msg` VARCHAR(500) DEFAULT NULL COMMENT '任务级异常',
+    `ref_id` BIGINT DEFAULT NULL COMMENT '关联对象（import=import_batch_id）',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `started_at` DATETIME DEFAULT NULL,
+    `finished_at` DATETIME DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    KEY `idx_user_type_created` (`user_id`, `task_type`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='批量誊录异步任务';
+
+-- R004 月度财务报告快照（与 db/r004-incremental.sql 保持一致）
+CREATE TABLE IF NOT EXISTS `monthly_report` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `month` VARCHAR(7) NOT NULL COMMENT '报告月份 YYYY-MM',
+    `total_income` DECIMAL(18,2) NOT NULL DEFAULT 0 COMMENT '月总收入',
+    `total_expense` DECIMAL(18,2) NOT NULL DEFAULT 0 COMMENT '月总支出',
+    `savings_rate` DECIMAL(5,2) DEFAULT NULL COMMENT '储蓄率%，收入为0时NULL',
+    `net_worth_start` DECIMAL(18,2) NOT NULL DEFAULT 0 COMMENT '期初净资产(上月1日)',
+    `net_worth_end` DECIMAL(18,2) NOT NULL DEFAULT 0 COMMENT '期末净资产(上月末)',
+    `subscription_spend` DECIMAL(18,2) NOT NULL DEFAULT 0 COMMENT '报告月订阅扣款合计',
+    `detail` TEXT COMMENT '归因/预算执行/分类top快照JSON',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_month` (`user_id`, `month`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='月度财务报告快照';

@@ -47,6 +47,16 @@ public class Account {
     private BigDecimal creditLimit;
 
     /**
+     * 账单日 1-31（负债账户用，可空）
+     */
+    private Integer billDay;
+
+    /**
+     * 还款日 1-31（负债账户用，可空）
+     */
+    private Integer repaymentDay;
+
+    /**
      * 是否计入净资产
      */
     private Boolean includeInNetWorth;
@@ -158,6 +168,22 @@ public class Account {
 
     public void setCreditLimit(BigDecimal creditLimit) {
         this.creditLimit = creditLimit;
+    }
+
+    public Integer getBillDay() {
+        return billDay;
+    }
+
+    public void setBillDay(Integer billDay) {
+        this.billDay = billDay;
+    }
+
+    public Integer getRepaymentDay() {
+        return repaymentDay;
+    }
+
+    public void setRepaymentDay(Integer repaymentDay) {
+        this.repaymentDay = repaymentDay;
     }
 
     public Boolean getIncludeInNetWorth() {

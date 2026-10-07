@@ -20,4 +20,14 @@ public interface DailyBudgetMapper {
     DailyBudget selectByUserIdAndCategoryIdAndMonth(@Param("userId") Long userId,
                                                      @Param("categoryId") Long categoryId,
                                                      @Param("month") String month);
+
+    /**
+     * 跨用户按月查询预算（每日兜底扫描用）
+     */
+    List<DailyBudget> selectByMonth(@Param("month") String month);
+
+    /**
+     * 导出备份：按用户查询全部每日预算（全部月份）
+     */
+    List<DailyBudget> selectAllByUserId(@Param("userId") Long userId);
 }

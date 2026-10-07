@@ -1,5 +1,8 @@
 server:
   port: 8080
+  # 导入文件上传上限（base64 膨胀 1.33x，前端限源文件 5MB）
+  tomcat:
+    max-http-form-post-size: 10MB
 
 spring:
   application:
@@ -39,6 +42,25 @@ wechat:
   mini:
     appid: ${WX_APPID:wxd28c90174393e686}
     secret: ${WX_SECRET:aa3b347c9da0cd8c4136e8d8e8a425de}
+
+# 应用配置（R002 消息中心）
+app:
+  notification:
+    scan-cron: "0 30 8 * * ?"            # 每日扫描时点
+    cleanup-cron: "0 40 8 * * ?"          # 扫描后清理
+    budget-warn-threshold: 80             # 预算预警阈值（%）
+    budget-exceed-threshold: 100          # 预算超限阈值（%）
+    repayment-advance-days: 2             # 还款日提前提醒天数
+    notice-retention-days: 90             # 已读通知保留天数
+    todo-retention-days: 30               # 已消化待办保留天数
+  wechat:
+    subscribe:
+      enabled: false                      # 微信订阅消息外发（后置：模板 ID 到位后启用）
+  report:
+    monthly-cron: "0 0 5 1 * ?"           # 月报生成时点（每月 1 日 05:00，R004）
+  test:
+    scan-endpoint:
+      enabled: true                       # 测试专用扫描入口（生产置 false）
 
 logging:
   level:

@@ -14,6 +14,9 @@
         <result column="refund_status" property="refundStatus"/>
         <result column="refunded_amount" property="refundedAmount"/>
         <result column="net_amount" property="netAmount"/>
+        <result column="source_template_id" property="sourceTemplateId"/>
+        <result column="external_order_no" property="externalOrderNo"/>
+        <result column="import_batch_id" property="importBatchId"/>
         <result column="is_deleted" property="isDeleted"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
@@ -21,22 +24,26 @@
 
     <sql id="Base_Column_List">
         id, user_id, date, time, amount, description, mode, transaction_type,
-        refund_status, refunded_amount, net_amount, is_deleted, created_at, updated_at
+        refund_status, refunded_amount, net_amount, source_template_id,
+        external_order_no, import_batch_id, is_deleted, created_at, updated_at
     </sql>
 
     <sql id="Transaction_Column_List">
         t.id, t.user_id, t.date, t.time, t.amount, t.description, t.mode, t.transaction_type,
-        t.refund_status, t.refunded_amount, t.net_amount, t.is_deleted, t.created_at, t.updated_at
+        t.refund_status, t.refunded_amount, t.net_amount, t.source_template_id,
+        t.external_order_no, t.import_batch_id, t.is_deleted, t.created_at, t.updated_at
     </sql>
 
     <!-- 插入交易 -->
     <insert id="insert" parameterType="com.duoduocode.service.transaction.entity.Transaction" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO `transaction` (
             user_id, date, time, amount, description, mode, transaction_type, refund_status,
-            refunded_amount, is_deleted, created_at, updated_at
+            refunded_amount, source_template_id, external_order_no, import_batch_id,
+            is_deleted, created_at, updated_at
         ) VALUES (
             #{userId}, #{date}, #{time}, #{amount}, #{description}, #{mode}, #{transactionType}, #{refundStatus},
-            #{refundedAmount}, #{isDeleted}, #{createdAt}, #{updatedAt}
+            #{refundedAmount}, #{sourceTemplateId}, #{externalOrderNo}, #{importBatchId},
+            #{isDeleted}, #{createdAt}, #{updatedAt}
         )
     </insert>
 
@@ -370,6 +377,63 @@
           AND e.is_deleted = 0
           AND t.date >= #{startDate}
           AND t.date &lt;= #{endDate}
+    </select>
+
+    <!-- 导入判重：查询用户已存在的来源单号集合 -->
+    <select id="selectExistingOrderNos" resultType="java.lang.String">
+        SELECT external_order_no
+        FROM `transaction`
+        WHERE user_id = #{userId}
+          AND is_deleted = 0
+          AND external_order_no IN
+        <foreach collection="orderNos" item="no" open="(" separator="," close=")">
+            #{no}
+        </foreach>
+    </select>
+
+    <!-- 导入判重：统计用户某来源单号已导入笔数 -->
+    <select id="countByUserAndOrderNo" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM `transaction`
+        WHERE user_id = #{userId}
+          AND is_deleted = 0
+          AND external_order_no = #{orderNo}
+    </select>
+
+    <!-- 导出全量：按用户查询全部未删除交易（按日期正序） -->
+    <select id="selectAllByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM `transaction`
+        WHERE user_id = #{userId}
+          AND is_deleted = 0
+        ORDER BY date ASC, time ASC, id ASC
+    </select>
+
+    <!-- 导出备份：含软删除交易 -->
+    <select id="selectAllByUserIdIncludeDeleted" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM `transaction`
+        WHERE user_id = #{userId}
+        ORDER BY date ASC, time ASC, id ASC
+    </select>
+
+    <!-- R004 订阅涨价基准：每模板最近一笔 expense 交易（date DESC, id DESC 取 1） -->
+    <select id="selectLatestTemplateAmounts" resultType="java.util.Map">
+        SELECT t.source_template_id AS templateId, t.amount AS amount
+        FROM `transaction` t
+        WHERE t.user_id = #{userId}
+          AND t.is_deleted = 0
+          AND t.transaction_type = 'expense'
+          AND t.source_template_id IS NOT NULL
+          AND t.id = (
+              SELECT t2.id
+              FROM `transaction` t2
+              WHERE t2.source_template_id = t.source_template_id
+                AND t2.is_deleted = 0
+                AND t2.transaction_type = 'expense'
+              ORDER BY t2.date DESC, t2.id DESC
+              LIMIT 1
+          )
     </select>
 
 </mapper>

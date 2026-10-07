@@ -141,4 +141,32 @@ public interface TransactionMapper {
     Map<String, Object> calculateAccountStatistics(@Param("accountId") Long accountId,
                                                     @Param("startDate") String startDate,
                                                     @Param("endDate") String endDate);
+
+    /**
+     * 导入判重：查询用户已存在的来源单号集合
+     */
+    List<String> selectExistingOrderNos(@Param("userId") Long userId,
+                                        @Param("orderNos") List<String> orderNos);
+
+    /**
+     * 导入判重：统计用户某来源单号已导入笔数（confirm 时点二次判重）
+     */
+    Long countByUserAndOrderNo(@Param("userId") Long userId,
+                               @Param("orderNo") String orderNo);
+
+    /**
+     * 导出全量：按用户查询全部未删除交易（按日期正序）
+     */
+    List<Transaction> selectAllByUserId(@Param("userId") Long userId);
+
+    /**
+     * 导出备份：按用户查询全部交易（含软删除，按日期正序）
+     */
+    List<Transaction> selectAllByUserIdIncludeDeleted(@Param("userId") Long userId);
+
+    /**
+     * 订阅涨价基准（R004）：按 source_template_id 取最近一笔 expense 交易金额
+     * 返回行键：templateId / amount
+     */
+    List<Map<String, Object>> selectLatestTemplateAmounts(@Param("userId") Long userId);
 }

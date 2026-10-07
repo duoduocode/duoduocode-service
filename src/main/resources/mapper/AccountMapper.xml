@@ -11,6 +11,8 @@
         <result column="color" property="color"/>
         <result column="initial_balance" property="initialBalance"/>
         <result column="credit_limit" property="creditLimit"/>
+        <result column="bill_day" property="billDay"/>
+        <result column="repayment_day" property="repaymentDay"/>
         <result column="include_in_net_worth" property="includeInNetWorth"/>
         <result column="allow_transfer" property="allowTransfer"/>
         <result column="enable_alert" property="enableAlert"/>
@@ -25,6 +27,7 @@
 
     <sql id="Base_Column_List">
         id, user_id, name, type, icon, color, initial_balance, credit_limit,
+        bill_day, repayment_day,
         include_in_net_worth, allow_transfer, enable_alert, alert_threshold,
         sort_order, `desc`, is_deleted, created_at, updated_at
     </sql>
@@ -45,10 +48,12 @@
     <insert id="insert" parameterType="com.duoduocode.service.account.entity.Account" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO account (
             user_id, name, type, icon, color, initial_balance, credit_limit,
+            bill_day, repayment_day,
             include_in_net_worth, allow_transfer, enable_alert, alert_threshold,
             sort_order, `desc`, is_deleted, created_at, updated_at
         ) VALUES (
             #{userId}, #{name}, #{type}, #{icon}, #{color}, #{initialBalance}, #{creditLimit},
+            #{billDay}, #{repaymentDay},
             #{includeInNetWorth}, #{allowTransfer}, #{enableAlert}, #{alertThreshold},
             #{sortOrder}, #{desc}, #{isDeleted}, #{createdAt}, #{updatedAt}
         )
@@ -64,6 +69,8 @@
             <if test="color != null">color = #{color},</if>
             <if test="initialBalance != null">initial_balance = #{initialBalance},</if>
             <if test="creditLimit != null">credit_limit = #{creditLimit},</if>
+            <if test="billDay != null">bill_day = #{billDay},</if>
+            <if test="repaymentDay != null">repayment_day = #{repaymentDay},</if>
             <if test="includeInNetWorth != null">include_in_net_worth = #{includeInNetWorth},</if>
             <if test="allowTransfer != null">allow_transfer = #{allowTransfer},</if>
             <if test="enableAlert != null">enable_alert = #{enableAlert},</if>
@@ -132,5 +139,25 @@
         SET is_deleted = 1, updated_at = NOW()
         WHERE id = #{id}
     </update>
+
+    <!-- 显式更新账单日/还款日（支持置 NULL 清空） -->
+    <update id="updateRepaymentConfig">
+        UPDATE account
+        SET bill_day = #{billDay},
+            repayment_day = #{repaymentDay},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- 扫描所有设置了还款日的负债账户（含动态余额，跨用户，供每日扫描） -->
+    <select id="selectLiabilityWithRepayment" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>,
+            <include refid="Dynamic_Balance_Sql"/>
+        FROM account a
+        WHERE a.type = 'liability'
+          AND a.is_deleted = 0
+          AND a.repayment_day IS NOT NULL
+          AND a.user_id IS NOT NULL
+    </select>
 
 </mapper>

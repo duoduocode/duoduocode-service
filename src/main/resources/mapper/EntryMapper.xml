@@ -63,6 +63,25 @@
         ORDER BY id ASC
     </select>
 
+    <!-- 导出用：分录联名称（联表不筛删除标记，历史账户/分类名称可追溯） -->
+    <select id="selectExportRowsByTransactionIds" resultType="map">
+        SELECT e.transaction_id AS transactionId,
+               e.account_id AS accountId,
+               e.account_type AS accountType,
+               e.debit AS debit,
+               e.credit AS credit,
+               CASE WHEN e.account_type = 'category' THEN c.name ELSE a.name END AS name
+        FROM entry e
+        LEFT JOIN category c ON e.account_type = 'category' AND c.id = e.account_id
+        LEFT JOIN account a ON e.account_type = 'account' AND a.id = e.account_id
+        WHERE e.is_deleted = 0
+          AND e.transaction_id IN
+        <foreach collection="transactionIds" item="txId" open="(" separator="," close=")">
+            #{txId}
+        </foreach>
+        ORDER BY e.transaction_id ASC, e.id ASC
+    </select>
+
     <!-- 根据ID删除分录 -->
     <delete id="deleteById">
         DELETE FROM entry

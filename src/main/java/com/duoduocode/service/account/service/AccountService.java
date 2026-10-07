@@ -151,6 +151,9 @@ public class AccountService {
         Object creditLimit = dto.get("creditLimit");
         account.setCreditLimit(creditLimit != null ? new BigDecimal(creditLimit.toString()) : null);
 
+        account.setBillDay(toDay(dto.get("billDay")));
+        account.setRepaymentDay(toDay(dto.get("repaymentDay")));
+
         account.setIncludeInNetWorth((Boolean) dto.getOrDefault("includeInNetWorth", true));
         account.setAllowTransfer((Boolean) dto.getOrDefault("allowTransfer", true));
         account.setEnableAlert((Boolean) dto.getOrDefault("enableAlert", false));
@@ -192,6 +195,8 @@ public class AccountService {
             copy.setColor(existing.getColor());
             copy.setInitialBalance(existing.getInitialBalance());
             copy.setCreditLimit(existing.getCreditLimit());
+            copy.setBillDay(existing.getBillDay());
+            copy.setRepaymentDay(existing.getRepaymentDay());
             copy.setIncludeInNetWorth(existing.getIncludeInNetWorth());
             copy.setAllowTransfer(existing.getAllowTransfer());
             copy.setEnableAlert(existing.getEnableAlert());
@@ -222,6 +227,13 @@ public class AccountService {
         applyAccountDto(account, dto, existing.getUserId());
 
         accountMapper.updateById(account);
+
+        // 账单日/还款日需支持显式置空（动态 update 的 if-null 语义做不到清空）
+        if (dto.containsKey("billDay") || dto.containsKey("repaymentDay")) {
+            accountMapper.updateRepaymentConfig(accountId,
+                    dto.containsKey("billDay") ? toDay(dto.get("billDay")) : existing.getBillDay(),
+                    dto.containsKey("repaymentDay") ? toDay(dto.get("repaymentDay")) : existing.getRepaymentDay());
+        }
         return accountId;
     }
 
@@ -256,6 +268,12 @@ public class AccountService {
         if (dto.containsKey("creditLimit")) {
             Object val = dto.get("creditLimit");
             account.setCreditLimit(val != null ? new BigDecimal(val.toString()) : null);
+        }
+        if (dto.containsKey("billDay")) {
+            account.setBillDay(toDay(dto.get("billDay")));
+        }
+        if (dto.containsKey("repaymentDay")) {
+            account.setRepaymentDay(toDay(dto.get("repaymentDay")));
         }
         if (dto.containsKey("includeInNetWorth")) {
             account.setIncludeInNetWorth((Boolean) dto.get("includeInNetWorth"));
@@ -421,6 +439,21 @@ public class AccountService {
         return new BigDecimal(value.toString());
     }
 
+    /**
+     * 账单日/还款日转换：1-31 整数，null/非法返回 null
+     */
+    private Integer toDay(Object value) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            int day = (int) Double.parseDouble(value.toString());
+            return (day >= 1 && day <= 31) ? day : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     private Long toLong(Object value) {
         if (value == null) return 0L;
         return ((Number) value).longValue();
@@ -439,6 +472,8 @@ public class AccountService {
         map.put("initialBalance", account.getInitialBalance());
         map.put("currentBalance", account.getCurrentBalance());
         map.put("creditLimit", account.getCreditLimit());
+        map.put("billDay", account.getBillDay());
+        map.put("repaymentDay", account.getRepaymentDay());
 
         if ("liability".equals(account.getType())) {
             BigDecimal bal = account.getCurrentBalance() != null ? account.getCurrentBalance() : BigDecimal.ZERO;
