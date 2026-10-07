@@ -1,7 +1,11 @@
 package com.duoduocode.service.report.controller;
 
+import com.duoduocode.service.common.BusinessException;
 import com.duoduocode.service.common.Result;
+import com.duoduocode.service.common.WebExceptions;
 import com.duoduocode.service.report.dto.*;
+import com.duoduocode.service.report.service.HealthService;
+import com.duoduocode.service.report.service.MonthlyReportService;
 import com.duoduocode.service.report.service.ReportService;
 import com.duoduocode.service.security.SecurityContext;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,6 +25,12 @@ public class ReportController {
 
     @Autowired
     private ReportService reportService;
+
+    @Autowired
+    private MonthlyReportService monthlyReportService;
+
+    @Autowired
+    private HealthService healthService;
 
     /**
      * 收支报表
@@ -79,5 +89,64 @@ public class ReportController {
         Long userId = SecurityContext.requireUserId();
         MonthlyComparisonVO report = reportService.getMonthlyComparisonReport(userId, month1, month2);
         return Result.success(report);
+    }
+
+    /**
+     * R004 月报列表
+     * GET /v1/reports/monthly?months=12
+     */
+    @GetMapping("/monthly")
+    @Operation(summary = "月报列表", description = "近 N 个完整月倒序（不含当月），已生成/未生成两态行")
+    public Result<MonthlyReportListVO> listMonthlyReports(
+            @Parameter(description = "窗口月数，默认 12，上限 12")
+            @RequestParam(required = false) Integer months) {
+        Long userId = SecurityContext.requireUserId();
+        log.debug("GET /v1/reports/monthly - userId={}, months={}", userId, months);
+        return Result.success(monthlyReportService.list(userId, months == null ? 12 : months));
+    }
+
+    /**
+     * R004 月报生成（幂等）
+     * POST /v1/reports/monthly/{month}/generate
+     */
+    @PostMapping("/monthly/{month}/generate")
+    @Operation(summary = "生成月报", description = "生成指定完整月的月报快照；已存在直接返回既有快照（不重算）")
+    public Result<MonthlyReportDetailVO> generateMonthlyReport(
+            @Parameter(description = "月份 YYYY-MM，须为近 12 个完整月内") @PathVariable String month) {
+        Long userId = SecurityContext.requireUserId();
+        log.info("POST /v1/reports/monthly/{}/generate - userId={}", month, userId);
+        try {
+            return Result.success(monthlyReportService.generate(userId, month));
+        } catch (BusinessException e) {
+            throw WebExceptions.fromBusiness(e);
+        }
+    }
+
+    /**
+     * R004 月报详情
+     * GET /v1/reports/monthly/{id}
+     */
+    @GetMapping("/monthly/{id}")
+    @Operation(summary = "月报详情", description = "按月报ID获取详情（通知 refId 同源直达；不存在或非本人 404）")
+    public Result<MonthlyReportDetailVO> getMonthlyReportDetail(
+            @Parameter(description = "月报ID") @PathVariable Long id) {
+        log.debug("GET /v1/reports/monthly/{} ", id);
+        try {
+            return Result.success(monthlyReportService.getDetail(id));
+        } catch (BusinessException e) {
+            throw WebExceptions.fromBusiness(e);
+        }
+    }
+
+    /**
+     * R004 资产负债健康度
+     * GET /v1/reports/health
+     */
+    @GetMapping("/health")
+    @Operation(summary = "资产负债健康度", description = "负债率/流动比率/应急金月数三指标（区间判定与降级原因）")
+    public Result<HealthVO> getHealthMetrics() {
+        Long userId = SecurityContext.requireUserId();
+        log.debug("GET /v1/reports/health - userId={}", userId);
+        return Result.success(healthService.getHealth(userId));
     }
 }

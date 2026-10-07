@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.duoduocode.service.report.mapper.MonthlyReportMapper">
+
+    <resultMap id="BaseResultMap" type="com.duoduocode.service.report.entity.MonthlyReport">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="month" property="month"/>
+        <result column="total_income" property="totalIncome"/>
+        <result column="total_expense" property="totalExpense"/>
+        <result column="savings_rate" property="savingsRate"/>
+        <result column="net_worth_start" property="netWorthStart"/>
+        <result column="net_worth_end" property="netWorthEnd"/>
+        <result column="subscription_spend" property="subscriptionSpend"/>
+        <result column="detail" property="detail"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <resultMap id="AccountResultMap" type="com.duoduocode.service.account.entity.Account">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="name" property="name"/>
+        <result column="type" property="type"/>
+        <result column="icon" property="icon"/>
+        <result column="color" property="color"/>
+        <result column="initial_balance" property="initialBalance"/>
+        <result column="credit_limit" property="creditLimit"/>
+        <result column="bill_day" property="billDay"/>
+        <result column="repayment_day" property="repaymentDay"/>
+        <result column="include_in_net_worth" property="includeInNetWorth"/>
+        <result column="allow_transfer" property="allowTransfer"/>
+        <result column="enable_alert" property="enableAlert"/>
+        <result column="alert_threshold" property="alertThreshold"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="desc" property="desc"/>
+        <result column="is_deleted" property="isDeleted"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="current_balance" property="currentBalance"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, month, total_income, total_expense, savings_rate,
+        net_worth_start, net_worth_end, subscription_spend, detail, created_at, updated_at
+    </sql>
+
+    <!-- as-of 余额：与 AccountMapper.Dynamic_Balance_Sql 同一分录聚合口径，追加 t.date <= asOfDate -->
+    <sql id="AsOf_Balance_Sql">
+        CASE WHEN a.type = 'liability'
+            THEN -ABS(COALESCE(a.initial_balance, 0))
+            ELSE COALESCE(a.initial_balance, 0)
+        END +
+        COALESCE((SELECT SUM(e.debit) - SUM(e.credit)
+            FROM entry e
+            INNER JOIN `transaction` t ON t.id = e.transaction_id AND t.is_deleted = 0
+            WHERE e.account_id = a.id AND e.account_type = 'account' AND e.is_deleted = 0
+              AND t.date &lt;= #{asOfDate}), 0)
+        AS current_balance
+    </sql>
+
+    <select id="selectByUserIdAndMonth" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM monthly_report
+        WHERE user_id = #{userId} AND month = #{month}
+    </select>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM monthly_report
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByUserIdFromMonth" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM monthly_report
+        WHERE user_id = #{userId} AND month &gt;= #{fromMonth}
+        ORDER BY month DESC
+    </select>
+
+    <insert id="insert" parameterType="com.duoduocode.service.report.entity.MonthlyReport"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO monthly_report (
+            user_id, month, total_income, total_expense, savings_rate,
+            net_worth_start, net_worth_end, subscription_spend, detail, created_at
+        ) VALUES (
+            #{userId}, #{month}, #{totalIncome}, #{totalExpense}, #{savingsRate},
+            #{netWorthStart}, #{netWorthEnd}, #{subscriptionSpend}, #{detail}, NOW()
+        )
+    </insert>
+
+    <select id="selectAccountBalancesAsOf" resultMap="AccountResultMap">
+        SELECT a.id, a.user_id, a.name, a.type, a.icon, a.color, a.initial_balance, a.credit_limit,
+            a.bill_day, a.repayment_day, a.include_in_net_worth, a.allow_transfer, a.enable_alert,
+            a.alert_threshold, a.sort_order, a.`desc`, a.is_deleted, a.created_at, a.updated_at,
+            <include refid="AsOf_Balance_Sql"/>
+        FROM account a
+        WHERE a.user_id = #{userId} AND a.is_deleted = 0
+        ORDER BY a.id
+    </select>
+
+    <select id="selectSubscriptionSpend" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(t.amount), 0)
+        FROM `transaction` t
+        WHERE t.user_id = #{userId}
+          AND t.is_deleted = 0
+          AND t.transaction_type = 'expense'
+          AND t.source_template_id IS NOT NULL
+          AND t.date BETWEEN #{startDate} AND #{endDate}
+    </select>
+
+    <select id="selectUserIdsWithTransactions" resultType="java.lang.Long">
+        SELECT DISTINCT t.user_id
+        FROM `transaction` t
+        WHERE t.is_deleted = 0
+          AND DATE_FORMAT(t.date, '%Y-%m') = #{month}
+    </select>
+
+</mapper>

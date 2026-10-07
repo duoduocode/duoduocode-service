@@ -3,15 +3,15 @@
     "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.duoduocode.service.report.mapper.ReportMapper">
 
-    <!-- 月度收支统计 -->
+    <!-- 月度收支统计（与 Dashboard 同口径：category 分录，income 取 credit、expense 取 debit，含负债账户支出） -->
     <select id="selectMonthlyIncomeExpense" resultType="com.duoduocode.service.report.dto.MonthlyData">
         SELECT
             DATE_FORMAT(t.date, '%Y-%m') as month,
-            SUM(CASE WHEN e.debit > 0 AND a.type = 'asset' THEN e.debit ELSE 0 END) as income,
-            SUM(CASE WHEN e.credit > 0 AND a.type = 'asset' THEN e.credit ELSE 0 END) as expense
+            SUM(CASE WHEN c.type = 'income' THEN e.credit ELSE 0 END) as income,
+            SUM(CASE WHEN c.type = 'expense' THEN e.debit ELSE 0 END) as expense
         FROM transaction t
-        JOIN entry e ON e.transaction_id = t.id
-        JOIN account a ON a.id = e.account_id
+        JOIN entry e ON e.transaction_id = t.id AND e.account_type = 'category'
+        JOIN category c ON c.id = e.account_id
         WHERE t.user_id = #{userId}
           AND t.is_deleted = 0
           AND t.date BETWEEN #{startDate} AND #{endDate}
@@ -19,15 +19,15 @@
         ORDER BY month
     </select>
 
-    <!-- 分类统计 -->
+    <!-- 分类统计（category 分录；income 汇总 credit、expense 汇总 debit） -->
     <select id="selectCategoryStats" resultType="com.duoduocode.service.report.dto.CategoryData">
         SELECT
             c.id as categoryId,
             c.name as categoryName,
-            SUM(e.debit) as amount,
-            COUNT(*) as transactionCount
+            SUM(CASE WHEN c.type = 'income' THEN e.credit ELSE e.debit END) as amount,
+            COUNT(DISTINCT t.id) as transactionCount
         FROM transaction t
-        JOIN entry e ON e.transaction_id = t.id
+        JOIN entry e ON e.transaction_id = t.id AND e.account_type = 'category'
         JOIN category c ON c.id = e.account_id
         WHERE t.user_id = #{userId}
           AND t.is_deleted = 0
