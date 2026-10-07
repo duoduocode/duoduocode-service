@@ -106,6 +106,18 @@
         ORDER BY next_trigger_date ASC
     </select>
 
+    <!-- 跨用户到期模板（每日通知扫描用） -->
+    <select id="selectDueTemplatesAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM recurring_template
+        WHERE is_deleted = 0
+          AND status = 'active'
+          AND next_trigger_date &lt;= #{date}
+          AND (end_date IS NULL OR end_date &gt;= #{date})
+          AND (max_count IS NULL OR executed_count &lt; max_count)
+        ORDER BY next_trigger_date ASC
+    </select>
+
     <update id="updateStatus">
         UPDATE recurring_template
         SET status = #{status},

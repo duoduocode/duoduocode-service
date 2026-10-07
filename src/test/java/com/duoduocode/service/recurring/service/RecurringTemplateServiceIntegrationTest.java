@@ -278,6 +278,47 @@ class RecurringTemplateServiceIntegrationTest {
     }
 
     @Test
+    void triggerTemplate_shouldAdvanceFromFutureTriggerDate() {
+        RecurringTemplateDTO dto = createTemplateDTO("未来期确认模板", "expense", "daily");
+        dto.setStartDate(LocalDate.now());
+        Long templateId = recurringTemplateService.createTemplate(testUserId, dto);
+
+        recurringTemplateService.triggerTemplate(templateId);
+
+        RecurringTemplateVO result = recurringTemplateService.getTemplateDetail(templateId);
+        assertEquals(LocalDate.now().plusDays(2), result.getNextTriggerDate(),
+                "提前确认未来一期应从该期顺延，而不是压缩回明天");
+    }
+
+    @Test
+    void resumeTemplate_shouldKeepFutureTriggerDate() {
+        RecurringTemplateDTO dto = createTemplateDTO("恢复保留触发日模板", "expense", "daily");
+        dto.setStartDate(LocalDate.now().plusDays(10));
+        Long templateId = recurringTemplateService.createTemplate(testUserId, dto);
+        recurringTemplateService.pauseTemplate(templateId);
+
+        recurringTemplateService.resumeTemplate(templateId);
+
+        RecurringTemplateVO result = recurringTemplateService.getTemplateDetail(templateId);
+        assertEquals(LocalDate.now().plusDays(11), result.getNextTriggerDate(),
+                "恢复不应把未来触发日压缩到明天");
+    }
+
+    @Test
+    void resumeTemplate_shouldRescheduleWhenTriggerDatePassed() {
+        RecurringTemplateDTO dto = createTemplateDTO("过期重排模板", "expense", "daily");
+        dto.setStartDate(LocalDate.now().minusDays(10));
+        Long templateId = recurringTemplateService.createTemplate(testUserId, dto);
+        recurringTemplateService.pauseTemplate(templateId);
+
+        recurringTemplateService.resumeTemplate(templateId);
+
+        RecurringTemplateVO result = recurringTemplateService.getTemplateDetail(templateId);
+        assertEquals(LocalDate.now().plusDays(1), result.getNextTriggerDate(),
+                "过期触发日应重排到下一未来周期");
+    }
+
+    @Test
     void fullTemplateLifecycle_shouldWorkCorrectly() {
         RecurringTemplateDTO dto = createTemplateDTO("完整生命周期", "expense", "monthly");
         dto.setMaxCount(3);

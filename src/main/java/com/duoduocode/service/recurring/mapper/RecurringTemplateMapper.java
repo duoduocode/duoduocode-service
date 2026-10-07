@@ -44,6 +44,11 @@ public interface RecurringTemplateMapper {
     List<RecurringTemplate> selectDueTemplates(@Param("userId") Long userId, @Param("date") LocalDate date);
 
     /**
+     * 跨用户查询到期模板（每日通知扫描用）
+     */
+    List<RecurringTemplate> selectDueTemplatesAll(@Param("date") LocalDate date);
+
+    /**
      * 更新模板状态
      */
     int updateStatus(@Param("id") Long id, @Param("status") String status);

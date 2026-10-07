@@ -1,8 +1,14 @@
 package com.duoduocode.service.recurring.controller;
 
+import com.duoduocode.service.common.BusinessException;
 import com.duoduocode.service.common.Result;
+import com.duoduocode.service.common.WebExceptions;
+import com.duoduocode.service.recurring.dto.BatchConfirmVO;
+import com.duoduocode.service.recurring.dto.BatchOperateDTO;
+import com.duoduocode.service.recurring.dto.RecurringCalendarVO;
 import com.duoduocode.service.recurring.dto.RecurringTemplateDTO;
 import com.duoduocode.service.recurring.dto.RecurringTemplateVO;
+import com.duoduocode.service.recurring.dto.SubscriptionOverviewVO;
 import com.duoduocode.service.recurring.service.RecurringTemplateService;
 import com.duoduocode.service.security.SecurityContext;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+
 
 /**
  * 周期交易模板控制器
@@ -153,5 +160,67 @@ public class RecurringTemplateController {
     public Result<Void> resumeTemplate(@Parameter(description = "模板ID") @PathVariable Long id) {
         recurringTemplateService.resumeTemplate(id);
         return Result.success("恢复成功", null);
+    }
+
+    /**
+     * R003 批量确认：勾选 ≥10 笔转异步任务
+     * POST /v1/recurring-templates/batch-confirm
+     */
+    @PostMapping("/batch-confirm")
+    @Operation(summary = "批量确认模板", description = "逐笔确认落账；勾选≥10 笔转异步任务并返回 taskId，单笔失败不影响其他笔")
+    public Result<BatchConfirmVO> batchConfirm(
+            @Parameter(description = "模板ID列表") @RequestBody BatchOperateDTO dto) {
+        Long userId = SecurityContext.requireUserId();
+        try {
+            return Result.success(recurringTemplateService.batchConfirm(
+                    userId, dto == null ? null : dto.getTemplateIds()));
+        } catch (BusinessException e) {
+            throw WebExceptions.fromBusiness(e);
+        }
+    }
+
+    /**
+     * R003 批量跳过：推进模板+消化待办，不落账
+     * POST /v1/recurring-templates/batch-skip
+     */
+    @PostMapping("/batch-skip")
+    @Operation(summary = "批量跳过模板", description = "逐笔跳过当期（推进模板+消化待办，不产生交易），恒同步执行")
+    public Result<BatchConfirmVO> batchSkip(
+            @Parameter(description = "模板ID列表") @RequestBody BatchOperateDTO dto) {
+        Long userId = SecurityContext.requireUserId();
+        try {
+            return Result.success(recurringTemplateService.batchSkip(
+                    userId, dto == null ? null : dto.getTemplateIds()));
+        } catch (BusinessException e) {
+            throw WebExceptions.fromBusiness(e);
+        }
+    }
+
+    /**
+     * R003 月度日历：模板计划期平铺
+     * GET /v1/recurring-templates/calendar?month=YYYY-MM
+     */
+    @GetMapping("/calendar")
+    @Operation(summary = "周期模板月度日历", description = "按月返回全部 active 模板的计划期与三态状态（done/due/planned）")
+    public Result<RecurringCalendarVO> getCalendar(
+            @Parameter(description = "月份 YYYY-MM") @RequestParam String month) {
+        Long userId = SecurityContext.requireUserId();
+        try {
+            return Result.success(recurringTemplateService.getCalendar(userId, month));
+        } catch (BusinessException e) {
+            throw WebExceptions.fromBusiness(e);
+        }
+    }
+
+    /**
+     * R004 订阅管理总览
+     * GET /v1/recurring-templates/subscription/overview
+     */
+    @GetMapping("/subscription/overview")
+    @Operation(summary = "订阅管理总览", description = "active 支出模板折算月额合计、逐项涨价三态与近 30 天计划扣款窗口")
+    public Result<SubscriptionOverviewVO> getSubscriptionOverview() {
+        Long userId = SecurityContext.requireUserId();
+        log.debug("GET /v1/recurring-templates/subscription/overview - userId={}", userId);
+        return Result.success(recurringTemplateService.getSubscriptionOverview(userId));
     }
 }
