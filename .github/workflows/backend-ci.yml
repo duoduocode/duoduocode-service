@@ -1,18 +1,19 @@
 name: backend-ci
 
-# 后端 CI：单元测试(默认) + 接口测试与四维覆盖率门禁(开关启用)
-# 完整启用接口测试需先将 test/ 目录推送到独立仓库（见 AGENTS.md 与方案文档），
-# 并在本仓库 Settings > Secrets and variables > Actions 添加:
-#   secrets: TEST_REPO_TOKEN        # 可访问测试仓库的 PAT
-#   vars:   ENABLE_API_TESTS=true   # 接口测试开关
-#           TEST_REPO=duoduocode/test-api-tests
+# 后端 CI：单元测试(快层，默认) + 接口测试与四维覆盖率门禁(全层，开关启用)
+# 分支模型（三级流水线）：feature/R00X-* → test（测试环境）→ main（生产环境）
+# 接口测试的数据源为工作区元仓（含 test/ 自动化工程），
+# 在本仓库 Settings > Secrets and variables > Actions 添加:
+#   secrets: TEST_REPO_TOKEN        # 可访问元仓的 PAT
+#   vars:   ENABLE_API_TESTS=true   # 接口测试开关（合并 test/main 时建议开启）
+#           TEST_REPO=<user>/duoduocode-workspace
 #           DB_PASSWORD             # CI MySQL root 密码（或用默认 duoduo123）
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, test]
   pull_request:
-    branches: [main, develop]
+    branches: [main, test]
   workflow_dispatch:
 
 jobs:

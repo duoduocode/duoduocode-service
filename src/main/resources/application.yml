@@ -7,11 +7,10 @@ server:
 spring:
   application:
     name: duoduocode-service
+  profiles:
+    default: local   # 缺省本地开发；ECS 由 systemd env 的 SPRING_PROFILES_ACTIVE 指定 test/prod
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://rm-bp1m5pf44nzonuabqfo.mysql.rds.aliyuncs.com:3306/duoduocode_dev?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&connectTimeout=30000&socketTimeout=30000
-    username: duoduocode_code
-    password: Txd831180!
     hikari:
       initialization-fail-timeout: -1
       connection-timeout: 30000
@@ -30,20 +29,20 @@ mybatis-plus:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
 
-# JWT 配置
+# JWT 配置（secret 外置：生产环境必须通过环境变量注入，默认值仅供本地开发）
 jwt:
-  secret: duoduocode-secret-key-for-jwt-token-generation-must-be-at-least-256-bits
+  secret: ${JWT_SECRET:duoduocode-local-dev-jwt-secret-key-min-256-bits}
   access-token-expiration: 7200
   refresh-token-expiration: 604800
   expiration: 86400000
 
-# 微信小程序配置
+# 微信小程序配置（secret 不入库：本地经环境变量提供，dev-login 不依赖它）
 wechat:
   mini:
     appid: ${WX_APPID:wxd28c90174393e686}
-    secret: ${WX_SECRET:aa3b347c9da0cd8c4136e8d8e8a425de}
+    secret: ${WX_SECRET:}
 
-# 应用配置（R002 消息中心）
+# 应用配置（R002 消息中心 / R004 月报）
 app:
   notification:
     scan-cron: "0 30 8 * * ?"            # 每日扫描时点
@@ -60,7 +59,7 @@ app:
     monthly-cron: "0 0 5 1 * ?"           # 月报生成时点（每月 1 日 05:00，R004）
   test:
     scan-endpoint:
-      enabled: true                       # 测试专用扫描入口（生产置 false）
+      enabled: false                      # 安全默认：仅 local/test profile 显式开启
 
 logging:
   level:

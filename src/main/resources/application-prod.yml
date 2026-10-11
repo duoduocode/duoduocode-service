@@ -1,0 +1,20 @@
+# ── 生产环境 profile（ECS 8081，连 RDS duoduocode_prod，待建） ──
+# 部署：systemd unit 指定 SPRING_PROFILES_ACTIVE=prod，密钥经 /etc/duoduocode/prod.env 注入
+# 前置：RDS duoduocode_prod 建库 + db/ 迁移脚本全量重放后首次部署
+# 密码无默认值：未设置 DB_PASSWORD 时启动即失败，防止误连
+
+spring:
+  datasource:
+    # TODO(duoduocode_prod 建库后): 将 host 替换为 prod 实例内网地址
+    url: jdbc:mysql://rm-bp1m5pf44nzonuabqfo.mysql.rds.aliyuncs.com:3306/duoduocode_prod?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&connectTimeout=30000&socketTimeout=30000
+    username: ${DB_USERNAME:duoduocode_code}
+    password: ${DB_PASSWORD:}
+
+app:
+  test:
+    scan-endpoint:
+      enabled: false   # 生产禁用测试专用扫描入口
+
+logging:
+  level:
+    com.duoduocode: info
