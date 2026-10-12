@@ -1,4 +1,4 @@
-# 本地开发库初始化：重建 duoduocode_dev + 全量 DDL + 种子数据
+﻿# 本地开发库初始化：重建 duoduocode_dev + 全量 DDL + 种子数据
 # 用法：
 #   .\scripts\init_local_db.ps1                      # 密码取 $env:DB_PASSWORD，缺省 duoduo123
 #   .\scripts\init_local_db.ps1 -Password xxx        # 显式指定 root 密码
@@ -9,7 +9,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$res = Join-Path $PSScriptRoot '..\src\main\resources'
+$res = (Resolve-Path (Join-Path $PSScriptRoot '..\src\main\resources')).Path.Replace('\', '/')
 
 # mysql 客户端存在性检查
 if (-not (Get-Command $Mysql -ErrorAction SilentlyContinue)) {
@@ -28,11 +28,13 @@ Write-Host '== 1/3 重建数据库 duoduocode_dev =='
 if ($LASTEXITCODE -ne 0) { Write-Error "重建失败（检查 root 密码/服务是否启动）" }
 
 Write-Host '== 2/3 导入全量 DDL（schema.sql） =='
-Get-Content (Join-Path $res 'schema.sql') -Encoding UTF8 | & $Mysql -h 127.0.0.1 -uroot "-p$Password" duoduocode_dev
+# 用 mysql 客户端 source 直读文件：禁止用 PS 管道（Get-Content | mysql）——
+# PS5.1 管道默认 ASCII 编码会把中文变 '?'，二级分类按名查找会与 '?' 化一级名撞车，指数级复制百万行
+& $Mysql --default-character-set=utf8mb4 -h 127.0.0.1 -uroot "-p$Password" -e "source $res/schema.sql" duoduocode_dev
 if ($LASTEXITCODE -ne 0) { Write-Error "schema.sql 导入失败" }
 
 Write-Host '== 3/3 导入种子数据（init_category_data.sql） =='
-Get-Content (Join-Path $res 'db\init_category_data.sql') -Encoding UTF8 | & $Mysql -h 127.0.0.1 -uroot "-p$Password" duoduocode_dev
+& $Mysql --default-character-set=utf8mb4 -h 127.0.0.1 -uroot "-p$Password" -e "source $res/db/init_category_data.sql" duoduocode_dev
 if ($LASTEXITCODE -ne 0) { Write-Error "种子数据导入失败" }
 
 Write-Host ''

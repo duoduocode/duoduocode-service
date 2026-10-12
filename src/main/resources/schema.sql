@@ -1,7 +1,7 @@
--- 创建数据库
-CREATE DATABASE IF NOT EXISTS duoduocode DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
-USE duoduocode;
+-- 全量幂等 DDL（唯一初始化入口）：不包含 CREATE DATABASE/USE，目标库由导入方决定
+-- （本地：scripts/init_local_db.ps1 导入 duoduocode_dev；RDS：重放前先建目标库）
+-- 表定义顺序与外键依赖无关，导入全程关闭外键检查，结束时恢复
+SET FOREIGN_KEY_CHECKS = 0;
 
 -- 用户表
 CREATE TABLE IF NOT EXISTS `users` (
@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS `entry` (
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
     KEY `idx_transaction_id` (`transaction_id`),
-    CONSTRAINT `fk_entry_transaction` FOREIGN KEY (`transaction_id`) REFERENCES `transactions` (`id`) ON DELETE CASCADE
+    CONSTRAINT `fk_entry_transaction` FOREIGN KEY (`transaction_id`) REFERENCES `transaction` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='分录表';
 
 -- 分类表
@@ -223,11 +223,9 @@ CREATE TABLE IF NOT EXISTS `investment_income` (
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
-    KEY `idx_user_id` (`user_id`),
     KEY `idx_account_id` (`account_id`),
     KEY `idx_date` (`date`),
-    KEY `idx_user_account_date` (`user_id`, `account_id`, `date`),
-    CONSTRAINT `fk_investment_income_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+    KEY `idx_account_date` (`account_id`, `date`),
     CONSTRAINT `fk_investment_income_account` FOREIGN KEY (`account_id`) REFERENCES `account` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='投资账户收益记录表';
 
@@ -245,12 +243,10 @@ CREATE TABLE IF NOT EXISTS `investment_value` (
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
-    KEY `idx_user_id` (`user_id`),
     KEY `idx_account_id` (`account_id`),
     KEY `idx_date` (`date`),
-    KEY `idx_user_account_date` (`user_id`, `account_id`, `date`),
-    CONSTRAINT `fk_investment_value_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_investment_value_account` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE
+    KEY `idx_account_date` (`account_id`, `date`),
+    CONSTRAINT `fk_investment_value_account` FOREIGN KEY (`account_id`) REFERENCES `account` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='投资账户市值记录表';
 
 -- 周期交易模板表
@@ -300,7 +296,7 @@ CREATE TABLE IF NOT EXISTS `transaction_tag` (
     KEY `idx_tag_id` (`tag_id`),
     UNIQUE KEY `uk_transaction_tag` (`transaction_id`, `tag_id`),
     CONSTRAINT `fk_transaction_tag_transaction` FOREIGN KEY (`transaction_id`) REFERENCES `transaction` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_transaction_tag_tag` FOREIGN KEY (`tag_id`) REFERENCES `tags` (`id`) ON DELETE CASCADE
+    CONSTRAINT `fk_transaction_tag_tag` FOREIGN KEY (`tag_id`) REFERENCES `tag` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='交易标签关联表';
 
 CREATE TABLE refund_record (
@@ -599,3 +595,5 @@ CREATE TABLE IF NOT EXISTS `monthly_report` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_user_month` (`user_id`, `month`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='月度财务报告快照';
+
+SET FOREIGN_KEY_CHECKS = 1;
