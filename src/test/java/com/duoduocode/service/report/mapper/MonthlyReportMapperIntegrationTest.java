@@ -30,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * （期初/期末与 DashboardService 同一分录聚合口径，防 as-of 漂移）。
  */
 @SpringBootTest
-@ActiveProfiles("dev")
+@ActiveProfiles("local")
 @Transactional
 class MonthlyReportMapperIntegrationTest {
 

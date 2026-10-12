@@ -74,7 +74,8 @@ pytest testcases -q                           # 接口测试全绿
    `git add <明确文件>`（禁止 `git add -A` 一把梭），commit message 用
    `feat|fix|test|docs|refactor: 中文摘要`。
 3. **汇报**：列出每个 commit 的 hash、涉及功能、四维覆盖率数字。
-4. 若用户要求推送，push 后确认 CI 结果。
+4. 若用户口令放行推送（「push」/「提交」），push 后按总控流程执行部署与冒烟
+   （deploy_test.ps1），确认自动化全绿后再进入下一环节（无 GitHub CI）。
 
 ## 4. 门禁标准（coverage_gate.py 判定，两套测试 exec 合并口径）
 

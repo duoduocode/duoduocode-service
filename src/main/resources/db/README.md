@@ -7,7 +7,7 @@
 
 | 文件 | 性质 | 说明 |
 |---|---|---|
-| `../schema.sql` | 全量 DDL（幂等） | 新库初始化唯一入口，含全部 20 表 + `CREATE DATABASE`；CI 每次重建 |
+| `../schema.sql` | 全量 DDL（幂等） | 新库初始化唯一入口，含全部 20 表 + `CREATE DATABASE`；preflight/部署流程使用 |
 | `init_category_data.sql` | 种子数据 | 系统预置分类，初始化时随 schema.sql 之后执行 |
 | `r002-incremental.sql` | 历史增量存档 | R002 新增 notification/import_batch（已并入 schema.sql，仅作变更历史） |
 | `r003-incremental.sql` | 历史增量存档 | R003 新增 recalculation_task（同上） |
@@ -18,13 +18,16 @@
 1. **新需求改表 → 新建增量文件**：`db/rXXX-incremental.sql`（XXX=需求编号），只写增量
    （`CREATE TABLE IF NOT EXISTS` / `ALTER TABLE` / 数据订正），并同步更新 `schema.sql`
    全量 DDL 保持一致（schema.sql 永远反映"从零初始化后的最新形态"）。
-2. **开发期**：本地 `scripts/init_local_db.ps1` 重建本地库（schema.sql + 种子），或手工对
-   本地库执行增量。
-3. **测试期**（feature → test 合并时）：由执行人在 RDS duoduocode_dev 上重放增量文件
+2. **开发期**：日常直接在 test 分支开发，代码连 RDS duoduocode_dev（表变更在测试期重放）；
+   本地 MySQL 仅作离线兜底（`scripts/init_local_db.ps1` 重建）。
+3. **测试期**（「push」口令部署 ECS test 时）：由执行人在 RDS duoduocode_dev 上重放增量文件
    （半自动：按编号顺序执行，执行前确认当前表结构状态）。
-4. **正式期**（test → main 合并时）：同样在 RDS duoduocode_prod 重放，重放前先备份
+4. **正式期**（「提交」口令合并 main 时）：同样在 RDS duoduocode_prod 重放，重放前先备份
    （`mysqldump` 快照）。
 5. 增量文件**不可修改已发布内容**——发现写错就新增订正增量，不改历史文件。
+6. **只加不改不删（回滚兼容）**：增量脚本禁止 UPDATE 破坏性变更 / DROP COLUMN / 缩短列宽——
+   只允许新增可空列、新增表、追加数据。这保证代码 jar 可独立回滚到上一版而不需要回滚数据库；
+   确需破坏性变更时拆两步（先加新列迁移数据，下个版本再清理旧列）。
 
 ## 幂等性要求
 
